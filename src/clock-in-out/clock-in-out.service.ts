@@ -75,10 +75,11 @@ export class ClockInOutService {
       }
 
       // Create new session for today
+      const formattedTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
       const newSession = this.loginHistoryRepository.create({
         userId,
         status: 1, // Active
-        sessionStart: clientTime,
+        sessionStart: formattedTime,
         timezone: 'Africa/Nairobi',
         duration: 0, // Will be calculated on clock out
       });
@@ -139,7 +140,7 @@ export class ClockInOutService {
       const validatedDuration = Math.min(durationMinutes, 480);
       
       // If duration exceeds 8 hours, cap the end time to 6:00 PM of the start day
-      let finalEndTime = clientTime;
+      let finalEndTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
       if (durationMinutes > 480) {
         const cappedEndTime = new Date(startTime);
         cappedEndTime.setHours(18, 0, 0, 0); // 6:00 PM
