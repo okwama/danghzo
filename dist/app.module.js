@@ -40,6 +40,7 @@ const routes_module_1 = require("./routes/routes.module");
 const version_module_1 = require("./version/version.module");
 const payments_module_1 = require("./payments/payments.module");
 const cache_module_1 = require("./cache/cache.module");
+const app_controller_1 = require("./app.controller");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -91,7 +92,7 @@ exports.AppModule = AppModule = __decorate([
             version_module_1.VersionModule,
             payments_module_1.PaymentsModule,
         ],
-        controllers: [database_monitor_controller_1.DatabaseMonitorController],
+        controllers: [app_controller_1.AppController, database_monitor_controller_1.DatabaseMonitorController],
         providers: [database_health_service_1.DatabaseHealthService, database_resilience_service_1.DatabaseResilienceService],
     })
 ], AppModule);

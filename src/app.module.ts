@@ -32,6 +32,7 @@ import { RoutesModule } from './routes/routes.module';
 import { VersionModule } from './version/version.module';
 import { PaymentsModule } from './payments/payments.module';
 import { AppCacheModule } from './cache/cache.module';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -80,7 +81,7 @@ import { AppCacheModule } from './cache/cache.module';
     VersionModule,
     PaymentsModule,
   ],
-  controllers: [DatabaseMonitorController],
+  controllers: [AppController, DatabaseMonitorController],
   providers: [DatabaseHealthService, DatabaseResilienceService],
 })
 export class AppModule {} 
