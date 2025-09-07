@@ -171,7 +171,10 @@ export class ClockInOutService {
    */
   async getCurrentStatus(userId: number): Promise<{ isClockedIn: boolean; sessionStart?: string; duration?: number; sessionId?: number }> {
     try {
-      // Fix: Check for TODAY's active session only using raw SQL for date comparison
+      // First, automatically close any old sessions from previous days
+      await this.forceCloseOldSessions(userId, new Date().toISOString());
+      
+      // Now check for TODAY's active session
       const today = new Date();
       const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
       
@@ -602,38 +605,43 @@ export class ClockInOutService {
   }
 
   /**
-   * Force close old sessions for a user
+   * Force close old sessions for a user - Simple and straightforward
    */
   private async forceCloseOldSessions(userId: number, currentTime: string): Promise<void> {
     try {
-      const today = new Date(currentTime);
-      const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+      const now = new Date(currentTime);
+      const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
 
-      // Find all sessions for the user from previous days
-      const oldSessions = await this.loginHistoryRepository
+      // Find ALL active sessions for the user (from any day)
+      const activeSessions = await this.loginHistoryRepository
         .createQueryBuilder('session')
         .where('session.userId = :userId', { userId })
-        .andWhere('DATE(session.sessionStart) < :today', { today: todayStr })
         .andWhere('session.status = 1') // Only active sessions
         .getMany();
 
-      if (oldSessions.length > 0) {
-        this.logger.warn(`⚠️ User ${userId} has ${oldSessions.length} old active sessions, forcing close...`);
+      if (activeSessions.length > 0) {
+        this.logger.warn(`⚠️ User ${userId} has ${activeSessions.length} active sessions, checking if any need to be closed...`);
 
-        for (const session of oldSessions) {
-          const startTime = new Date(session.sessionStart);
-          const endTime = new Date(startTime);
-          endTime.setHours(18, 0, 0, 0); // 6:00 PM
+        for (const session of activeSessions) {
+          const sessionDate = new Date(session.sessionStart);
+          const sessionDateStr = sessionDate.toISOString().split('T')[0];
           
-          const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+          // If session is from a different day, close it
+          if (sessionDateStr !== todayStr) {
+            const startTime = new Date(session.sessionStart);
+            const endTime = new Date(startTime);
+            endTime.setHours(18, 0, 0, 0); // 6:00 PM on the session day
+            
+            const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
 
-          await this.loginHistoryRepository.update(session.id, {
-            status: 2, // Ended
-            sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
-            duration: durationMinutes,
-          });
+            await this.loginHistoryRepository.update(session.id, {
+              status: 2, // Ended
+              sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
+              duration: durationMinutes,
+            });
 
-          this.logger.log(`✅ Forced closed old session ${session.id} for user ${userId}`);
+            this.logger.log(`✅ Closed old session ${session.id} from ${sessionDateStr} for user ${userId}`);
+          }
         }
       }
     } catch (error) {

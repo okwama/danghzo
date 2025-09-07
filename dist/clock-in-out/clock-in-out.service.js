@@ -137,6 +137,7 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
     }
     async getCurrentStatus(userId) {
         try {
+            await this.forceCloseOldSessions(userId, new Date().toISOString());
             const today = new Date();
             const todayStr = today.toISOString().slice(0, 10);
             const activeSession = await this.loginHistoryRepository
@@ -454,27 +455,30 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
     }
     async forceCloseOldSessions(userId, currentTime) {
         try {
-            const today = new Date(currentTime);
-            const todayStr = today.toISOString().split('T')[0];
-            const oldSessions = await this.loginHistoryRepository
+            const now = new Date(currentTime);
+            const todayStr = now.toISOString().split('T')[0];
+            const activeSessions = await this.loginHistoryRepository
                 .createQueryBuilder('session')
                 .where('session.userId = :userId', { userId })
-                .andWhere('DATE(session.sessionStart) < :today', { today: todayStr })
                 .andWhere('session.status = 1')
                 .getMany();
-            if (oldSessions.length > 0) {
-                this.logger.warn(`⚠️ User ${userId} has ${oldSessions.length} old active sessions, forcing close...`);
-                for (const session of oldSessions) {
-                    const startTime = new Date(session.sessionStart);
-                    const endTime = new Date(startTime);
-                    endTime.setHours(18, 0, 0, 0);
-                    const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-                    await this.loginHistoryRepository.update(session.id, {
-                        status: 2,
-                        sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
-                        duration: durationMinutes,
-                    });
-                    this.logger.log(`✅ Forced closed old session ${session.id} for user ${userId}`);
+            if (activeSessions.length > 0) {
+                this.logger.warn(`⚠️ User ${userId} has ${activeSessions.length} active sessions, checking if any need to be closed...`);
+                for (const session of activeSessions) {
+                    const sessionDate = new Date(session.sessionStart);
+                    const sessionDateStr = sessionDate.toISOString().split('T')[0];
+                    if (sessionDateStr !== todayStr) {
+                        const startTime = new Date(session.sessionStart);
+                        const endTime = new Date(startTime);
+                        endTime.setHours(18, 0, 0, 0);
+                        const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
+                        await this.loginHistoryRepository.update(session.id, {
+                            status: 2,
+                            sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
+                            duration: durationMinutes,
+                        });
+                        this.logger.log(`✅ Closed old session ${session.id} from ${sessionDateStr} for user ${userId}`);
+                    }
                 }
             }
         }
