@@ -19,11 +19,13 @@ export declare class ClockInOutService {
     getCurrentStatus(userId: number): Promise<{
         isClockedIn: boolean;
         sessionStart?: string;
+        sessionEnd?: string;
         duration?: number;
         sessionId?: number;
-    }>;
-    getTodaySessions(userId: number): Promise<{
-        sessions: any[];
+        status?: string;
+        clockInTime?: string;
+        clockOutTime?: string;
+        createdAt?: string;
     }>;
     getUserSessions(userId: number, period: 'today' | 'week' | 'month' | 'custom', startDate?: string, endDate?: string, limit?: number): Promise<{
         sessions: any[];
@@ -36,9 +38,6 @@ export declare class ClockInOutService {
     private getEmptyStatistics;
     private formatDateTime;
     private formatDuration;
-    private cleanupMultipleActiveSessions;
-    private forceCloseOldSessions;
-    private getTodaySession;
     forceClockOut(userId: number): Promise<{
         success: boolean;
         message: string;

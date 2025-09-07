@@ -39,11 +39,17 @@ export class ClockInOutController {
   }
 
   /**
-   * Get today's sessions
+   * Get today's sessions (using unified method)
    */
   @Get('today/:userId')
   async getTodaySessions(@Param('userId') userId: string) {
-    return await this.clockInOutService.getTodaySessions(parseInt(userId));
+    return await this.clockInOutService.getUserSessions(
+      parseInt(userId),
+      'today',
+      undefined,
+      undefined,
+      50
+    );
   }
 
   /**

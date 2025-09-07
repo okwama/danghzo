@@ -18,11 +18,17 @@ export declare class ClockInOutController {
     getCurrentStatus(userId: string): Promise<{
         isClockedIn: boolean;
         sessionStart?: string;
+        sessionEnd?: string;
         duration?: number;
         sessionId?: number;
+        status?: string;
+        clockInTime?: string;
+        clockOutTime?: string;
+        createdAt?: string;
     }>;
     getTodaySessions(userId: string): Promise<{
         sessions: any[];
+        statistics: any;
     }>;
     getUserSessions(userId: string, period?: 'today' | 'week' | 'month' | 'custom', startDate?: string, endDate?: string, limit?: string): Promise<{
         sessions: any[];

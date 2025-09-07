@@ -28,7 +28,6 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
         try {
             const { userId, clientTime } = clockInDto;
             this.logger.log(`🟢 Clock In attempt for user ${userId} at ${clientTime}`);
-            await this.cleanupMultipleActiveSessions(userId);
             const today = new Date();
             const todayStr = today.toISOString().slice(0, 10);
             const activeSession = await this.loginHistoryRepository
@@ -46,8 +45,14 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                     sessionId: activeSession.id,
                 };
             }
-            const todaySession = await this.getTodaySession(userId, clientTime);
-            if (todaySession && todaySession.status === 2) {
+            const todaySession = await this.loginHistoryRepository
+                .createQueryBuilder('session')
+                .where('session.userId = :userId', { userId })
+                .andWhere('DATE(session.sessionStart) = :today', { today: todayStr })
+                .andWhere('session.status = 2')
+                .orderBy('session.sessionStart', 'DESC')
+                .getOne();
+            if (todaySession) {
                 await this.loginHistoryRepository.update(todaySession.id, {
                     status: 1,
                     sessionEnd: null,
@@ -60,7 +65,6 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                     sessionId: todaySession.id,
                 };
             }
-            await this.forceCloseOldSessions(userId, clientTime);
             const newSession = this.loginHistoryRepository.create({
                 userId,
                 status: 1,
@@ -137,7 +141,6 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
     }
     async getCurrentStatus(userId) {
         try {
-            await this.forceCloseOldSessions(userId, new Date().toISOString());
             const today = new Date();
             const todayStr = today.toISOString().slice(0, 10);
             const activeSession = await this.loginHistoryRepository
@@ -158,38 +161,18 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             return {
                 isClockedIn: true,
                 sessionStart: activeSession.sessionStart,
+                sessionEnd: activeSession.sessionEnd,
                 duration: currentDuration,
                 sessionId: activeSession.id,
+                status: activeSession.status === 1 ? 'active' : 'completed',
+                clockInTime: activeSession.sessionStart,
+                clockOutTime: activeSession.sessionEnd,
+                createdAt: activeSession.sessionStart,
             };
         }
         catch (error) {
             this.logger.error(`❌ Get current status failed for user ${userId}: ${error.message}`);
             return { isClockedIn: false };
-        }
-    }
-    async getTodaySessions(userId) {
-        try {
-            const today = new Date();
-            const todayStr = today.toISOString().split('T')[0];
-            const sessions = await this.loginHistoryRepository
-                .createQueryBuilder('session')
-                .where('session.userId = :userId', { userId })
-                .andWhere('DATE(session.sessionStart) = :today', { today: todayStr })
-                .orderBy('session.sessionStart', 'DESC')
-                .getMany();
-            const formattedSessions = sessions.map(session => ({
-                id: session.id,
-                sessionStart: session.sessionStart,
-                sessionEnd: session.sessionEnd,
-                duration: session.duration,
-                status: session.status,
-                timezone: session.timezone,
-            }));
-            return { sessions: formattedSessions };
-        }
-        catch (error) {
-            this.logger.error(`❌ Get today's sessions failed for user ${userId}: ${error.message}`);
-            return { sessions: [] };
         }
     }
     async getUserSessions(userId, period, startDate, endDate, limit = 50) {
@@ -420,87 +403,6 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
         }
         else {
             return `${remainingMinutes}m`;
-        }
-    }
-    async cleanupMultipleActiveSessions(userId) {
-        try {
-            const activeSessions = await this.loginHistoryRepository.find({
-                where: {
-                    userId,
-                    status: 1,
-                },
-                order: { sessionStart: 'DESC' },
-            });
-            if (activeSessions.length > 1) {
-                this.logger.warn(`⚠️ User ${userId} has ${activeSessions.length} active sessions, cleaning up...`);
-                const newestSession = activeSessions[0];
-                const sessionsToClose = activeSessions.slice(1);
-                for (const session of sessionsToClose) {
-                    const startTime = new Date(session.sessionStart);
-                    const endTime = new Date(startTime);
-                    endTime.setHours(18, 0, 0, 0);
-                    const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-                    await this.loginHistoryRepository.update(session.id, {
-                        status: 2,
-                        sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
-                        duration: durationMinutes,
-                    });
-                    this.logger.log(`✅ Auto-closed old session ${session.id} for user ${userId}`);
-                }
-            }
-        }
-        catch (error) {
-            this.logger.error(`❌ Failed to cleanup multiple active sessions for user ${userId}: ${error.message}`);
-        }
-    }
-    async forceCloseOldSessions(userId, currentTime) {
-        try {
-            const now = new Date(currentTime);
-            const todayStr = now.toISOString().split('T')[0];
-            const activeSessions = await this.loginHistoryRepository
-                .createQueryBuilder('session')
-                .where('session.userId = :userId', { userId })
-                .andWhere('session.status = 1')
-                .getMany();
-            if (activeSessions.length > 0) {
-                this.logger.warn(`⚠️ User ${userId} has ${activeSessions.length} active sessions, checking if any need to be closed...`);
-                for (const session of activeSessions) {
-                    const sessionDate = new Date(session.sessionStart);
-                    const sessionDateStr = sessionDate.toISOString().split('T')[0];
-                    if (sessionDateStr !== todayStr) {
-                        const startTime = new Date(session.sessionStart);
-                        const endTime = new Date(startTime);
-                        endTime.setHours(18, 0, 0, 0);
-                        const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
-                        await this.loginHistoryRepository.update(session.id, {
-                            status: 2,
-                            sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
-                            duration: durationMinutes,
-                        });
-                        this.logger.log(`✅ Closed old session ${session.id} from ${sessionDateStr} for user ${userId}`);
-                    }
-                }
-            }
-        }
-        catch (error) {
-            this.logger.error(`❌ Failed to force close old sessions for user ${userId}: ${error.message}`);
-        }
-    }
-    async getTodaySession(userId, clientTime) {
-        try {
-            const today = new Date(clientTime);
-            const todayStr = today.toISOString().split('T')[0];
-            const todaySession = await this.loginHistoryRepository
-                .createQueryBuilder('session')
-                .where('session.userId = :userId', { userId })
-                .andWhere('DATE(session.sessionStart) = :today', { today: todayStr })
-                .orderBy('session.sessionStart', 'DESC')
-                .getOne();
-            return todaySession;
-        }
-        catch (error) {
-            this.logger.error(`❌ Failed to get today's session for user ${userId}: ${error.message}`);
-            return null;
         }
     }
     async forceClockOut(userId) {

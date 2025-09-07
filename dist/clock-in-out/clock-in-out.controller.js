@@ -33,7 +33,7 @@ let ClockInOutController = class ClockInOutController {
         return await this.clockInOutService.getCurrentStatus(parseInt(userId));
     }
     async getTodaySessions(userId) {
-        return await this.clockInOutService.getTodaySessions(parseInt(userId));
+        return await this.clockInOutService.getUserSessions(parseInt(userId), 'today', undefined, undefined, 50);
     }
     async getUserSessions(userId, period = 'today', startDate, endDate, limit) {
         const parsedLimit = limit ? parseInt(limit, 10) : 50;
