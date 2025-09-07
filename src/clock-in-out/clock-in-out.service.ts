@@ -23,9 +23,13 @@ export class ClockInOutService {
 
       this.logger.log(`🟢 Clock In attempt for user ${userId} at ${clientTime}`);
 
-      // Check if user has an active session for TODAY
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
+      // Check if user has an active session for TODAY (using Africa/Nairobi timezone)
+      const now = new Date();
+      // Convert to Africa/Nairobi timezone (UTC+3)
+      const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+      const todayStr = nairobiTime.toISOString().slice(0, 10); // YYYY-MM-DD format
+      
+      this.logger.log(`📅 Clock-in checking for today's session: ${todayStr} (Nairobi time)`);
       
       const activeSession = await this.loginHistoryRepository
         .createQueryBuilder('session')
@@ -181,9 +185,13 @@ export class ClockInOutService {
     createdAt?: string;
   }> {
     try {
-      // Check for TODAY's active session
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
+      // Check for TODAY's active session (using Africa/Nairobi timezone)
+      const now = new Date();
+      // Convert to Africa/Nairobi timezone (UTC+3)
+      const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+      const todayStr = nairobiTime.toISOString().slice(0, 10); // YYYY-MM-DD format
+      
+      this.logger.log(`📅 Checking for today's session: ${todayStr} (Nairobi time)`);
       
       const activeSession = await this.loginHistoryRepository
         .createQueryBuilder('session')
@@ -200,8 +208,8 @@ export class ClockInOutService {
 
       // Calculate current duration
       const startTime = new Date(activeSession.sessionStart);
-      const now = new Date();
-      const currentDuration = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
+      const currentTime = new Date();
+      const currentDuration = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
 
       this.logger.log(`📊 User ${userId} has active session for today: ${activeSession.sessionStart}, duration: ${currentDuration} minutes`);
 
@@ -254,7 +262,7 @@ export class ClockInOutService {
         .orderBy('session.sessionStart', 'DESC')
         .limit(limit)
         .getMany();
-        
+
       this.logger.log(`🔍 Raw sessions found: ${sessions.length}`);
       if (sessions.length > 0) {
         this.logger.log(`🔍 First session: ${JSON.stringify(sessions[0])}`);
