@@ -2,6 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColum
 import { JourneyPlan } from '../journey-plans/entities/journey-plan.entity';
 import { UpliftSale } from './uplift-sale.entity';
 import { SalesRep } from './sales-rep.entity';
+import { ClientAssignment } from './client-assignment.entity';
 
 @Entity('Clients')
 @Index('Clients_countryId_fkey', ['countryId'])
@@ -64,6 +65,12 @@ export class Clients {
   @Column({ nullable: true })
   outlet_account: number;
 
+  @Column({ type: 'decimal', precision: 11, scale: 2 })
+  credit_limit: number;
+
+  @Column()
+  payment_terms: number;
+
   @Column()
   countryId: number;
 
@@ -82,4 +89,7 @@ export class Clients {
 
   @OneToMany(() => UpliftSale, upliftSale => upliftSale.client)
   upliftSales: UpliftSale[];
+
+  @OneToMany(() => ClientAssignment, assignment => assignment.client)
+  assignments: ClientAssignment[];
 } 

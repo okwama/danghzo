@@ -97,6 +97,54 @@ let AuthService = AuthService_1 = class AuthService {
             throw new common_1.UnauthorizedException('Invalid token');
         }
     }
+    async refreshToken(refreshToken) {
+        this.logger.log('🔄 Refreshing JWT token');
+        try {
+            const payload = this.jwtService.verify(refreshToken);
+            this.logger.log(`✅ Refresh token verified for user ID: ${payload.sub}`);
+            const user = await this.usersService.findById(payload.sub);
+            if (!user || user.status !== 1) {
+                this.logger.warn(`❌ User not found or inactive for refresh token user ID: ${payload.sub}`);
+                throw new common_1.UnauthorizedException('Invalid refresh token or user inactive');
+            }
+            const newPayload = {
+                phoneNumber: user.phoneNumber,
+                sub: user.id,
+                role: user.role,
+                countryId: user.countryId,
+                regionId: user.region_id,
+                routeId: user.route_id
+            };
+            const newAccessToken = this.jwtService.sign(newPayload);
+            const newRefreshToken = this.jwtService.sign(newPayload, { expiresIn: '7d' });
+            this.logger.log(`✅ New tokens generated for user: ${user.name}`);
+            const response = {
+                success: true,
+                message: 'Token refreshed successfully',
+                accessToken: newAccessToken,
+                refreshToken: newRefreshToken,
+                expiresIn: 32400,
+                salesRep: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phoneNumber,
+                    role: user.role,
+                    countryId: user.countryId,
+                    regionId: user.region_id,
+                    routeId: user.route_id,
+                    status: user.status,
+                    photoUrl: user.photoUrl
+                }
+            };
+            this.logger.log(`📤 Refresh response prepared for user: ${user.name}`);
+            return response;
+        }
+        catch (error) {
+            this.logger.error('❌ Refresh token validation failed', error.stack);
+            throw new common_1.UnauthorizedException('Invalid refresh token');
+        }
+    }
 };
 exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([

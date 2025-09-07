@@ -3,13 +3,13 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 10, 2025 at 09:19 PM
--- Server version: 10.6.22-MariaDB-cll-lve
--- PHP Version: 8.3.23
+-- Generation Time: Sep 06, 2025 at 11:54 AM
+-- Server version: 10.6.23-MariaDB-cll-lve
+-- PHP Version: 8.4.10
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
-SET time_zone = "+00:00"; 
+SET time_zone = "+00:00";
 
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
@@ -100,6 +100,25 @@ CREATE TABLE `assets` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `asset_assignments`
+--
+
+CREATE TABLE `asset_assignments` (
+  `id` int(11) NOT NULL,
+  `asset_id` int(11) NOT NULL,
+  `staff_id` int(11) NOT NULL,
+  `assigned_date` date NOT NULL,
+  `assigned_by` int(11) NOT NULL,
+  `comment` text DEFAULT NULL,
+  `status` enum('active','returned','lost','damaged') DEFAULT 'active',
+  `returned_date` date DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `asset_types`
 --
 
@@ -142,7 +161,8 @@ CREATE TABLE `attendance` (
   `early_departure_minutes` int(11) NOT NULL DEFAULT 0,
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `corrected` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -253,6 +273,20 @@ CREATE TABLE `chat_room_members` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `ClientAssignment`
+--
+
+CREATE TABLE `ClientAssignment` (
+  `id` int(11) NOT NULL,
+  `outletId` int(11) NOT NULL,
+  `salesRepId` int(11) NOT NULL,
+  `assignedAt` datetime(3) NOT NULL DEFAULT current_timestamp(3),
+  `status` varchar(191) NOT NULL DEFAULT 'active'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `Clients`
 --
 
@@ -276,6 +310,8 @@ CREATE TABLE `Clients` (
   `status` int(11) NOT NULL DEFAULT 1,
   `client_type` int(11) DEFAULT NULL,
   `outlet_account` int(11) DEFAULT NULL,
+  `payment_terms` int(11) NOT NULL,
+  `credit_limit` decimal(11,2) NOT NULL,
   `countryId` int(11) NOT NULL,
   `added_by` int(11) DEFAULT NULL,
   `created_at` datetime(3) DEFAULT current_timestamp(3)
@@ -294,6 +330,7 @@ CREATE TABLE `client_ledger` (
   `description` text NOT NULL,
   `reference_type` varchar(20) NOT NULL,
   `reference_id` int(11) NOT NULL,
+  `reference` varchar(200) NOT NULL,
   `debit` decimal(15,2) DEFAULT 0.00,
   `credit` decimal(15,2) DEFAULT 0.00,
   `running_balance` decimal(15,2) NOT NULL,
@@ -341,14 +378,20 @@ CREATE TABLE `credit_notes` (
   `id` int(11) NOT NULL,
   `credit_note_number` varchar(50) NOT NULL,
   `client_id` int(11) NOT NULL,
-  `original_invoice_id` int(11) NOT NULL,
+  `original_invoice_id` int(11) DEFAULT NULL,
   `credit_note_date` date NOT NULL,
+  `subtotal` decimal(11,2) NOT NULL,
+  `tax_amount` decimal(11,2) NOT NULL,
+  `net_price` decimal(11,2) NOT NULL,
   `total_amount` decimal(15,2) DEFAULT 0.00,
   `reason` text NOT NULL,
   `status` enum('draft','issued','cancelled') DEFAULT 'draft',
+  `my_status` int(11) NOT NULL,
   `created_by` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `received_by` int(11) NOT NULL,
+  `received_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -364,7 +407,10 @@ CREATE TABLE `credit_note_items` (
   `product_id` int(11) NOT NULL,
   `quantity` decimal(10,2) NOT NULL,
   `unit_price` decimal(15,2) NOT NULL,
+  `tax_amount` decimal(11,2) NOT NULL,
+  `subtotal` decimal(11,2) NOT NULL,
   `total_price` decimal(15,2) NOT NULL,
+  `net_price` decimal(11,2) NOT NULL,
   `reason` text NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
@@ -487,6 +533,63 @@ CREATE TABLE `employee_warnings` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `expense_details`
+--
+
+CREATE TABLE `expense_details` (
+  `id` int(11) NOT NULL,
+  `journal_entry_id` int(11) NOT NULL,
+  `supplier_id` int(11) DEFAULT NULL,
+  `amount` decimal(15,2) NOT NULL DEFAULT 0.00,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `expense_items`
+--
+
+CREATE TABLE `expense_items` (
+  `id` int(11) NOT NULL,
+  `journal_entry_id` int(11) NOT NULL,
+  `expense_account_id` int(11) NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `quantity` int(11) DEFAULT 1,
+  `unit_price` decimal(10,2) NOT NULL,
+  `tax_type` enum('16%','zero_rated','exempted') DEFAULT '16%',
+  `total_amount` decimal(15,2) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `expense_payments`
+--
+
+CREATE TABLE `expense_payments` (
+  `id` int(11) NOT NULL,
+  `supplier_id` int(11) NOT NULL,
+  `payment_number` varchar(200) NOT NULL,
+  `journal_entry_id` int(11) NOT NULL,
+  `expense_detail_id` int(11) NOT NULL,
+  `payment_date` date NOT NULL,
+  `payment_method` enum('cash','check','bank_transfer','credit_card','mobile_money') NOT NULL,
+  `account_id` int(11) NOT NULL,
+  `amount` decimal(15,2) NOT NULL,
+  `reference` varchar(100) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `currency` varchar(50) NOT NULL,
+  `status` enum('pending','confirmed','cancelled') DEFAULT 'confirmed',
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `faulty_products_items`
 --
 
@@ -526,12 +629,13 @@ CREATE TABLE `faulty_products_reports` (
 --
 
 CREATE TABLE `FeedbackReport` (
-  `reportId` int(11) NOT NULL,
+  `reportId` int(11) DEFAULT NULL,
   `comment` varchar(191) DEFAULT NULL,
   `createdAt` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `clientId` int(11) NOT NULL,
   `id` int(11) NOT NULL,
-  `userId` int(11) NOT NULL
+  `userId` int(11) NOT NULL,
+  `report_date` date GENERATED ALWAYS AS (cast(`createdAt` as date)) STORED
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -645,7 +749,8 @@ CREATE TABLE `journal_entry_lines` (
   `account_id` int(11) NOT NULL,
   `debit_amount` decimal(15,2) DEFAULT 0.00,
   `credit_amount` decimal(15,2) DEFAULT 0.00,
-  `description` text DEFAULT NULL
+  `description` text DEFAULT NULL,
+  `line_number` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -670,7 +775,9 @@ CREATE TABLE `JourneyPlan` (
   `checkoutLongitude` double DEFAULT NULL,
   `checkoutTime` datetime(3) DEFAULT NULL,
   `showUpdateLocation` tinyint(1) NOT NULL DEFAULT 1,
-  `routeId` int(11) DEFAULT NULL
+  `routeId` int(11) DEFAULT NULL,
+  `createdAt` varchar(50) NOT NULL,
+  `updatedAt` varchar(50) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -839,6 +946,96 @@ CREATE TABLE `managers` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `merchandise`
+--
+
+CREATE TABLE `merchandise` (
+  `id` int(11) NOT NULL,
+  `name` varchar(200) NOT NULL,
+  `category_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL DEFAULT 0,
+  `description` text DEFAULT NULL,
+  `unit_price` decimal(10,2) DEFAULT 0.00,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `merchandise_assignments`
+--
+
+CREATE TABLE `merchandise_assignments` (
+  `id` int(11) NOT NULL,
+  `merchandise_id` int(11) NOT NULL,
+  `staff_id` int(11) NOT NULL,
+  `quantity_assigned` int(11) NOT NULL,
+  `date_assigned` date NOT NULL,
+  `comment` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `merchandise_categories`
+--
+
+CREATE TABLE `merchandise_categories` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `merchandise_ledger`
+--
+
+CREATE TABLE `merchandise_ledger` (
+  `id` int(11) NOT NULL,
+  `merchandise_id` int(11) NOT NULL,
+  `store_id` int(11) NOT NULL,
+  `transaction_type` enum('RECEIVE','ISSUE','ADJUSTMENT','TRANSFER') NOT NULL,
+  `quantity` int(11) NOT NULL,
+  `balance_after` int(11) NOT NULL,
+  `reference_id` int(11) DEFAULT NULL,
+  `reference_type` enum('STOCK_RECEIPT','STOCK_ISSUE','ADJUSTMENT','TRANSFER') NOT NULL,
+  `notes` text DEFAULT NULL,
+  `created_by` int(11) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `merchandise_stock`
+--
+
+CREATE TABLE `merchandise_stock` (
+  `id` int(11) NOT NULL,
+  `merchandise_id` int(11) NOT NULL,
+  `store_id` int(11) NOT NULL,
+  `quantity` int(11) NOT NULL DEFAULT 0,
+  `received_date` timestamp NOT NULL DEFAULT current_timestamp(),
+  `received_by` int(11) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `my_assets`
 --
 
@@ -953,6 +1150,18 @@ CREATE TABLE `notices` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `outlet_accounts`
+--
+
+CREATE TABLE `outlet_accounts` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `status` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `outlet_categories`
 --
 
@@ -975,7 +1184,13 @@ CREATE TABLE `out_of_office_requests` (
   `comment` text DEFAULT NULL,
   `status` enum('pending','approved','declined') DEFAULT 'pending',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `start_time` time DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `title` varchar(255) NOT NULL DEFAULT 'Out of Office Request',
+  `photo_url` int(255) NOT NULL,
+  `approved_by` int(20) NOT NULL,
+  `approved_at` varchar(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -1205,6 +1420,18 @@ CREATE TABLE `Riders` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `riders_company`
+--
+
+CREATE TABLE `riders_company` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `status` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `routes`
 --
 
@@ -1215,8 +1442,10 @@ CREATE TABLE `routes` (
   `region_name` varchar(100) NOT NULL,
   `country_id` int(11) NOT NULL,
   `country_name` varchar(100) NOT NULL,
+  `sales_rep_id` int(11) NOT NULL,
+  `sales_rep_name` varchar(100) NOT NULL,
   `leader_id` int(11) NOT NULL,
-  `leader_name` varchar(100) NOT NULL,
+  `leader_name` varchar(20) NOT NULL,
   `status` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
@@ -1290,7 +1519,7 @@ CREATE TABLE `sales_orders` (
   `total_amount` decimal(15,2) DEFAULT 0.00,
   `net_price` decimal(11,2) NOT NULL,
   `notes` text DEFAULT NULL,
-  `created_by` int(11) DEFAULT NULL,
+  `created_by` varchar(255) DEFAULT NULL,
   `salesrep` int(11) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -1301,7 +1530,12 @@ CREATE TABLE `sales_orders` (
   `dispatched_by` int(11) DEFAULT NULL,
   `status` enum('draft','confirmed','shipped','delivered','cancelled','in payment','paid') DEFAULT 'draft',
   `my_status` tinyint(3) NOT NULL,
-  `delivered_at` timestamp NULL DEFAULT NULL
+  `received_into_stock` tinyint(1) NOT NULL DEFAULT 0,
+  `delivered_at` timestamp NULL DEFAULT NULL,
+  `received_by` int(11) NOT NULL,
+  `received_at` datetime DEFAULT NULL,
+  `delivery_image` varchar(500) DEFAULT NULL COMMENT 'Path/URL of the delivery photo captured by rider',
+  `returned_at` datetime NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -1320,6 +1554,8 @@ CREATE TABLE `sales_order_items` (
   `total_price` decimal(15,2) NOT NULL,
   `tax_type` enum('16%','zero_rated','exempted') DEFAULT '16%',
   `net_price` decimal(11,2) NOT NULL,
+  `unit_cost` decimal(11,2) NOT NULL,
+  `cost_price` decimal(11,2) NOT NULL,
   `shipped_quantity` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
@@ -1369,9 +1605,12 @@ CREATE TABLE `staff` (
   `department_email` varchar(255) DEFAULT NULL,
   `salary` decimal(11,2) DEFAULT NULL,
   `employment_type` varchar(100) NOT NULL,
+  `gender` enum('Male','Female','Other') NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `is_active` int(3) NOT NULL
+  `is_active` int(3) NOT NULL,
+  `avatar_url` varchar(200) NOT NULL,
+  `status` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -1533,7 +1772,8 @@ CREATE TABLE `tasks` (
   `priority` varchar(191) NOT NULL DEFAULT 'medium',
   `status` varchar(191) NOT NULL DEFAULT 'pending',
   `salesRepId` int(11) NOT NULL,
-  `assignedById` int(11) DEFAULT NULL
+  `assignedById` int(11) DEFAULT NULL,
+  `date` varchar(20) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1581,7 +1821,7 @@ CREATE TABLE `UpliftSale` (
   `status` varchar(191) NOT NULL DEFAULT 'pending',
   `totalAmount` double NOT NULL DEFAULT 0,
   `createdAt` datetime(3) NOT NULL DEFAULT current_timestamp(3),
-  `updatedAt` datetime(3) NOT NULL
+  `updatedAt` datetime(3) NOT NULL DEFAULT current_timestamp(3) ON UPDATE current_timestamp(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1665,13 +1905,14 @@ CREATE TABLE `versions` (
 --
 
 CREATE TABLE `VisibilityReport` (
-  `reportId` int(11) NOT NULL,
+  `reportId` int(11) DEFAULT NULL,
   `comment` varchar(191) DEFAULT NULL,
   `imageUrl` varchar(191) DEFAULT NULL,
   `createdAt` datetime(3) NOT NULL DEFAULT current_timestamp(3),
   `clientId` int(11) NOT NULL,
   `id` int(11) NOT NULL,
-  `userId` int(11) NOT NULL
+  `userId` int(11) NOT NULL,
+  `report_date` date GENERATED ALWAYS AS (cast(`createdAt` as date)) STORED
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -1728,6 +1969,18 @@ ALTER TABLE `allowed_ips`
 ALTER TABLE `assets`
   ADD PRIMARY KEY (`id`),
   ADD KEY `account_id` (`account_id`);
+
+--
+-- Indexes for table `asset_assignments`
+--
+ALTER TABLE `asset_assignments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `assigned_by` (`assigned_by`),
+  ADD KEY `idx_asset_id` (`asset_id`),
+  ADD KEY `idx_staff_id` (`staff_id`),
+  ADD KEY `idx_assigned_date` (`assigned_date`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_asset_staff` (`asset_id`,`staff_id`);
 
 --
 -- Indexes for table `asset_types`
@@ -1801,6 +2054,15 @@ ALTER TABLE `chat_room_members`
   ADD PRIMARY KEY (`id`),
   ADD KEY `room_id` (`room_id`),
   ADD KEY `staff_id` (`staff_id`);
+
+--
+-- Indexes for table `ClientAssignment`
+--
+ALTER TABLE `ClientAssignment`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `ClientAssignment_outletId_salesRepId_key` (`outletId`,`salesRepId`),
+  ADD KEY `ClientAssignment_salesRepId_idx` (`salesRepId`),
+  ADD KEY `ClientAssignment_outletId_idx` (`outletId`);
 
 --
 -- Indexes for table `Clients`
@@ -1903,6 +2165,30 @@ ALTER TABLE `employee_warnings`
   ADD KEY `staff_id` (`staff_id`);
 
 --
+-- Indexes for table `expense_details`
+--
+ALTER TABLE `expense_details`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `journal_entry_id` (`journal_entry_id`),
+  ADD KEY `supplier_id` (`supplier_id`);
+
+--
+-- Indexes for table `expense_items`
+--
+ALTER TABLE `expense_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `journal_entry_id` (`journal_entry_id`);
+
+--
+-- Indexes for table `expense_payments`
+--
+ALTER TABLE `expense_payments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `expense_detail_id` (`expense_detail_id`),
+  ADD KEY `account_id` (`account_id`),
+  ADD KEY `created_by` (`created_by`);
+
+--
 -- Indexes for table `faulty_products_items`
 --
 ALTER TABLE `faulty_products_items`
@@ -1926,10 +2212,15 @@ ALTER TABLE `faulty_products_reports`
 --
 ALTER TABLE `FeedbackReport`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `FeedbackReport_reportId_key` (`reportId`),
+  ADD UNIQUE KEY `uk_feedback_client_date` (`clientId`,`report_date`),
   ADD KEY `FeedbackReport_userId_idx` (`userId`),
   ADD KEY `FeedbackReport_clientId_idx` (`clientId`),
-  ADD KEY `FeedbackReport_reportId_idx` (`reportId`);
+  ADD KEY `FeedbackReport_reportId_idx` (`reportId`),
+  ADD KEY `idx_feedback_report_report_id` (`reportId`),
+  ADD KEY `idx_feedback_report_user_id` (`userId`),
+  ADD KEY `idx_feedback_report_client_id` (`clientId`),
+  ADD KEY `idx_feedback_report_created_at` (`createdAt`),
+  ADD KEY `idx_feedback_report_composite` (`reportId`,`createdAt`);
 
 --
 -- Indexes for table `hr_calendar_tasks`
@@ -2063,6 +2354,52 @@ ALTER TABLE `managers`
   ADD UNIQUE KEY `email` (`email`);
 
 --
+-- Indexes for table `merchandise`
+--
+ALTER TABLE `merchandise`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `category_id` (`category_id`),
+  ADD KEY `idx_merchandise_active` (`is_active`),
+  ADD KEY `idx_merchandise_name` (`name`);
+
+--
+-- Indexes for table `merchandise_assignments`
+--
+ALTER TABLE `merchandise_assignments`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_merchandise_id` (`merchandise_id`),
+  ADD KEY `idx_staff_id` (`staff_id`),
+  ADD KEY `idx_date_assigned` (`date_assigned`);
+
+--
+-- Indexes for table `merchandise_categories`
+--
+ALTER TABLE `merchandise_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`),
+  ADD KEY `idx_merchandise_categories_active` (`is_active`);
+
+--
+-- Indexes for table `merchandise_ledger`
+--
+ALTER TABLE `merchandise_ledger`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_merchandise_ledger_merchandise` (`merchandise_id`),
+  ADD KEY `idx_merchandise_ledger_store` (`store_id`),
+  ADD KEY `idx_merchandise_ledger_type` (`transaction_type`),
+  ADD KEY `idx_merchandise_ledger_date` (`created_at`);
+
+--
+-- Indexes for table `merchandise_stock`
+--
+ALTER TABLE `merchandise_stock`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `store_id` (`store_id`),
+  ADD KEY `idx_merchandise_stock_merchandise` (`merchandise_id`),
+  ADD KEY `idx_merchandise_stock_active` (`is_active`),
+  ADD KEY `idx_merchandise_stock_date` (`received_date`);
+
+--
 -- Indexes for table `my_assets`
 --
 ALTER TABLE `my_assets`
@@ -2112,6 +2449,12 @@ ALTER TABLE `notices`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `outlet_accounts`
+--
+ALTER TABLE `outlet_accounts`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `outlet_categories`
 --
 ALTER TABLE `outlet_categories`
@@ -2155,7 +2498,12 @@ ALTER TABLE `ProductReport`
   ADD PRIMARY KEY (`id`),
   ADD KEY `ProductReport_userId_idx` (`userId`),
   ADD KEY `ProductReport_clientId_idx` (`clientId`),
-  ADD KEY `ProductReport_reportId_idx` (`reportId`);
+  ADD KEY `ProductReport_reportId_idx` (`reportId`),
+  ADD KEY `idx_product_report_report_id` (`reportId`),
+  ADD KEY `idx_product_report_user_id` (`userId`),
+  ADD KEY `idx_product_report_client_id` (`clientId`),
+  ADD KEY `idx_product_report_created_at` (`createdAt`),
+  ADD KEY `idx_product_report_composite` (`reportId`,`createdAt`);
 
 --
 -- Indexes for table `products`
@@ -2213,6 +2561,12 @@ ALTER TABLE `Riders`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `riders_company`
+--
+ALTER TABLE `riders_company`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `routes`
 --
 ALTER TABLE `routes`
@@ -2244,7 +2598,8 @@ ALTER TABLE `sales_orders`
   ADD UNIQUE KEY `so_number` (`so_number`),
   ADD KEY `fk_sales_orders_client` (`client_id`),
   ADD KEY `salesrep_rel` (`salesrep`),
-  ADD KEY `created_by` (`created_by`);
+  ADD KEY `created_by` (`created_by`),
+  ADD KEY `idx_sales_orders_delivery_image` (`delivery_image`);
 
 --
 -- Indexes for table `sales_order_items`
@@ -2412,10 +2767,15 @@ ALTER TABLE `versions`
 --
 ALTER TABLE `VisibilityReport`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `VisibilityReport_reportId_key` (`reportId`),
+  ADD UNIQUE KEY `uk_visibility_client_date` (`clientId`,`report_date`),
   ADD KEY `VisibilityReport_userId_idx` (`userId`),
   ADD KEY `VisibilityReport_clientId_idx` (`clientId`),
-  ADD KEY `VisibilityReport_reportId_idx` (`reportId`);
+  ADD KEY `VisibilityReport_reportId_idx` (`reportId`),
+  ADD KEY `idx_visibility_report_report_id` (`reportId`),
+  ADD KEY `idx_visibility_report_user_id` (`userId`),
+  ADD KEY `idx_visibility_report_client_id` (`clientId`),
+  ADD KEY `idx_visibility_report_created_at` (`createdAt`),
+  ADD KEY `idx_visibility_report_composite` (`reportId`,`createdAt`);
 
 --
 -- Indexes for table `warning_letters`
@@ -2456,6 +2816,12 @@ ALTER TABLE `allowed_ips`
 -- AUTO_INCREMENT for table `assets`
 --
 ALTER TABLE `assets`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `asset_assignments`
+--
+ALTER TABLE `asset_assignments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -2510,6 +2876,12 @@ ALTER TABLE `chat_rooms`
 -- AUTO_INCREMENT for table `chat_room_members`
 --
 ALTER TABLE `chat_room_members`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `ClientAssignment`
+--
+ALTER TABLE `ClientAssignment`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -2588,6 +2960,24 @@ ALTER TABLE `employee_documents`
 -- AUTO_INCREMENT for table `employee_warnings`
 --
 ALTER TABLE `employee_warnings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `expense_details`
+--
+ALTER TABLE `expense_details`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `expense_items`
+--
+ALTER TABLE `expense_items`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `expense_payments`
+--
+ALTER TABLE `expense_payments`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -2693,6 +3083,36 @@ ALTER TABLE `managers`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `merchandise`
+--
+ALTER TABLE `merchandise`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `merchandise_assignments`
+--
+ALTER TABLE `merchandise_assignments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `merchandise_categories`
+--
+ALTER TABLE `merchandise_categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `merchandise_ledger`
+--
+ALTER TABLE `merchandise_ledger`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `merchandise_stock`
+--
+ALTER TABLE `merchandise_stock`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `my_assets`
 --
 ALTER TABLE `my_assets`
@@ -2726,6 +3146,12 @@ ALTER TABLE `NoticeBoard`
 -- AUTO_INCREMENT for table `notices`
 --
 ALTER TABLE `notices`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `outlet_accounts`
+--
+ALTER TABLE `outlet_accounts`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -2804,6 +3230,12 @@ ALTER TABLE `retail_targets`
 -- AUTO_INCREMENT for table `Riders`
 --
 ALTER TABLE `Riders`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `riders_company`
+--
+ALTER TABLE `riders_company`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -2967,6 +3399,14 @@ ALTER TABLE `warning_letters`
 --
 
 --
+-- Constraints for table `asset_assignments`
+--
+ALTER TABLE `asset_assignments`
+  ADD CONSTRAINT `asset_assignments_ibfk_1` FOREIGN KEY (`asset_id`) REFERENCES `my_assets` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `asset_assignments_ibfk_2` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`id`) ON UPDATE CASCADE,
+  ADD CONSTRAINT `asset_assignments_ibfk_3` FOREIGN KEY (`assigned_by`) REFERENCES `users` (`id`) ON UPDATE CASCADE;
+
+--
 -- Constraints for table `credit_notes`
 --
 ALTER TABLE `credit_notes`
@@ -2982,10 +3422,58 @@ ALTER TABLE `credit_note_items`
   ADD CONSTRAINT `credit_note_items_ibfk_3` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `expense_details`
+--
+ALTER TABLE `expense_details`
+  ADD CONSTRAINT `expense_details_ibfk_1` FOREIGN KEY (`journal_entry_id`) REFERENCES `journal_entries` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `expense_details_ibfk_2` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id`);
+
+--
+-- Constraints for table `expense_items`
+--
+ALTER TABLE `expense_items`
+  ADD CONSTRAINT `expense_items_ibfk_1` FOREIGN KEY (`journal_entry_id`) REFERENCES `journal_entries` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `expense_payments`
+--
+ALTER TABLE `expense_payments`
+  ADD CONSTRAINT `expense_payments_ibfk_1` FOREIGN KEY (`expense_detail_id`) REFERENCES `expense_details` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `expense_payments_ibfk_2` FOREIGN KEY (`account_id`) REFERENCES `chart_of_accounts` (`id`),
+  ADD CONSTRAINT `expense_payments_ibfk_3` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`);
+
+--
 -- Constraints for table `LoginHistory`
 --
 ALTER TABLE `LoginHistory`
   ADD CONSTRAINT `LoginHistory_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `SalesRep` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Constraints for table `merchandise`
+--
+ALTER TABLE `merchandise`
+  ADD CONSTRAINT `merchandise_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `merchandise_categories` (`id`);
+
+--
+-- Constraints for table `merchandise_assignments`
+--
+ALTER TABLE `merchandise_assignments`
+  ADD CONSTRAINT `merchandise_assignments_ibfk_1` FOREIGN KEY (`merchandise_id`) REFERENCES `merchandise` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `merchandise_assignments_ibfk_2` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `merchandise_ledger`
+--
+ALTER TABLE `merchandise_ledger`
+  ADD CONSTRAINT `merchandise_ledger_ibfk_1` FOREIGN KEY (`merchandise_id`) REFERENCES `merchandise` (`id`),
+  ADD CONSTRAINT `merchandise_ledger_ibfk_2` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`);
+
+--
+-- Constraints for table `merchandise_stock`
+--
+ALTER TABLE `merchandise_stock`
+  ADD CONSTRAINT `merchandise_stock_ibfk_1` FOREIGN KEY (`merchandise_id`) REFERENCES `merchandise` (`id`),
+  ADD CONSTRAINT `merchandise_stock_ibfk_2` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`);
 
 --
 -- Constraints for table `staff_tasks`
@@ -2993,6 +3481,20 @@ ALTER TABLE `LoginHistory`
 ALTER TABLE `staff_tasks`
   ADD CONSTRAINT `fk_staff_tasks_assigned_by` FOREIGN KEY (`assigned_by_id`) REFERENCES `staff` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `fk_staff_tasks_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `UpliftSale`
+--
+ALTER TABLE `UpliftSale`
+  ADD CONSTRAINT `fk_uplift_sale_client` FOREIGN KEY (`clientId`) REFERENCES `Clients` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_uplift_sale_user` FOREIGN KEY (`userId`) REFERENCES `SalesRep` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `UpliftSaleItem`
+--
+ALTER TABLE `UpliftSaleItem`
+  ADD CONSTRAINT `fk_uplift_sale_item_product` FOREIGN KEY (`productId`) REFERENCES `Product` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_uplift_sale_item_uplift_sale` FOREIGN KEY (`upliftSaleId`) REFERENCES `UpliftSale` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

@@ -71,20 +71,23 @@ let ProductsService = class ProductsService {
             console.log(`📦 Found ${allProducts.length} total active products with inventory and price options`);
             const countryProducts = [];
             for (const product of allProducts) {
-                const isAvailableInCountry = await this.isProductAvailableInCountry(product.id, userCountryId);
-                if (isAvailableInCountry) {
-                    if (product.storeInventory) {
-                        product.storeInventory = product.storeInventory.filter(inventory => {
-                            return inventory.store &&
-                                inventory.store.countryId === userCountryId &&
-                                inventory.store.isActive === true &&
-                                inventory.quantity > 0;
-                        });
-                    }
-                    countryProducts.push(product);
+                if (product.storeInventory) {
+                    product.storeInventory = product.storeInventory.filter(inventory => {
+                        return inventory.store &&
+                            inventory.store.countryId === userCountryId &&
+                            inventory.store.isActive === true;
+                    });
                 }
+                const stockInfo = this.calculateStockStatus(product, userCountryId);
+                product.stockStatus = stockInfo.status;
+                product.totalStock = stockInfo.totalStock;
+                product.isOutOfStock = stockInfo.isOutOfStock;
+                product.isLowStock = stockInfo.isLowStock;
+                product.allowOutOfStockOrder = true;
+                product.sellingPrice = this.getCountrySpecificPrice(product, userCountryId);
+                countryProducts.push(product);
             }
-            console.log(`✅ Found ${countryProducts.length} products available in country ${userCountryId}`);
+            console.log(`✅ Returning ${countryProducts.length} products for country ${userCountryId}`);
             return countryProducts;
         }
         catch (error) {
@@ -129,6 +132,51 @@ let ProductsService = class ProductsService {
     }
     async findOne(id) {
         return this.productRepository.findOne({ where: { id } });
+    }
+    calculateStockStatus(product, countryId) {
+        let totalStock = 0;
+        if (product.storeInventory && product.storeInventory.length > 0) {
+            totalStock = product.storeInventory.reduce((sum, inventory) => {
+                return sum + (inventory.quantity || 0);
+            }, 0);
+        }
+        const isOutOfStock = totalStock <= 0;
+        const isLowStock = totalStock > 0 && totalStock <= (product.reorderLevel || 10);
+        let status = 'In Stock';
+        if (isOutOfStock) {
+            status = 'Out of Stock';
+        }
+        else if (isLowStock) {
+            status = 'Low Stock';
+        }
+        return {
+            status,
+            totalStock,
+            isOutOfStock,
+            isLowStock
+        };
+    }
+    getCountrySpecificPrice(product, countryId) {
+        try {
+            if (product.categoryEntity?.categoryPriceOptions?.length > 0) {
+                const priceOption = product.categoryEntity.categoryPriceOptions[0];
+                switch (countryId) {
+                    case 1:
+                        return priceOption.value || 0;
+                    case 2:
+                        return priceOption.valueTzs || 0;
+                    case 3:
+                        return priceOption.valueNgn || 0;
+                    default:
+                        return priceOption.value || 0;
+                }
+            }
+            return product.sellingPrice || 0;
+        }
+        catch (error) {
+            console.error(`❌ Error getting country-specific price for product ${product.id}:`, error);
+            return product.sellingPrice || 0;
+        }
     }
 };
 exports.ProductsService = ProductsService;

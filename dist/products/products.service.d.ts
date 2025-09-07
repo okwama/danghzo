@@ -12,4 +12,6 @@ export declare class ProductsService {
     findProductsByCountry(userCountryId: number): Promise<Product[]>;
     private isProductAvailableInCountry;
     findOne(id: number): Promise<Product>;
+    private calculateStockStatus;
+    private getCountrySpecificPrice;
 }

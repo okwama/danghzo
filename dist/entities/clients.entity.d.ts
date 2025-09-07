@@ -1,6 +1,7 @@
 import { JourneyPlan } from '../journey-plans/entities/journey-plan.entity';
 import { UpliftSale } from './uplift-sale.entity';
 import { SalesRep } from './sales-rep.entity';
+import { ClientAssignment } from './client-assignment.entity';
 export declare class Clients {
     id: number;
     name: string;
@@ -21,10 +22,13 @@ export declare class Clients {
     status: number;
     client_type: number;
     outlet_account: number;
+    credit_limit: number;
+    payment_terms: number;
     countryId: number;
     added_by: number;
     addedByUser: SalesRep;
     created_at: Date;
     journeyPlans: JourneyPlan[];
     upliftSales: UpliftSale[];
+    assignments: ClientAssignment[];
 }

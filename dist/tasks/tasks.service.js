@@ -47,7 +47,12 @@ let TasksService = class TasksService {
         await this.taskRepository.delete(id);
     }
     async completeTask(id) {
-        await this.taskRepository.update(id, { status: 'COMPLETED' });
+        const updateData = {
+            status: 'COMPLETED',
+            isCompleted: true,
+            completedAt: new Date()
+        };
+        await this.taskRepository.update(id, updateData);
         return this.findOne(id);
     }
 };

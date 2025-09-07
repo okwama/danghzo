@@ -25,13 +25,15 @@ export declare class ClockInOutService {
     getTodaySessions(userId: number): Promise<{
         sessions: any[];
     }>;
-    getClockHistory(userId: number, startDate?: string, endDate?: string): Promise<{
+    getUserSessions(userId: number, period: 'today' | 'week' | 'month' | 'custom', startDate?: string, endDate?: string, limit?: number): Promise<{
         sessions: any[];
+        statistics: any;
     }>;
-    getClockSessionsWithProcedure(userId: number, startDate?: string, endDate?: string, limit?: number): Promise<{
-        sessions: any[];
-    }>;
-    private getClockSessionsFallback;
+    private calculateDateRange;
+    private calculateStatistics;
+    private calculateMonthlyAttendance;
+    private calculateAttendanceDays;
+    private getEmptyStatistics;
     private formatDateTime;
     private formatDuration;
     private cleanupMultipleActiveSessions;

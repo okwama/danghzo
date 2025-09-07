@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var JourneyPlansService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JourneyPlansService = void 0;
 const common_1 = require("@nestjs/common");
@@ -19,12 +20,15 @@ const typeorm_2 = require("typeorm");
 const journey_plan_entity_1 = require("./entities/journey-plan.entity");
 const clients_entity_1 = require("../entities/clients.entity");
 const sales_rep_entity_1 = require("../entities/sales-rep.entity");
-let JourneyPlansService = class JourneyPlansService {
-    constructor(journeyPlanRepository, clientsRepository, salesRepRepository, dataSource) {
+const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
+let JourneyPlansService = JourneyPlansService_1 = class JourneyPlansService {
+    constructor(journeyPlanRepository, clientsRepository, salesRepRepository, dataSource, cloudinaryService) {
         this.journeyPlanRepository = journeyPlanRepository;
         this.clientsRepository = clientsRepository;
         this.salesRepRepository = salesRepRepository;
         this.dataSource = dataSource;
+        this.cloudinaryService = cloudinaryService;
+        this.logger = new common_1.Logger(JourneyPlansService_1.name);
     }
     getFallbackCoordinates(countryId) {
         const countryCoordinates = {
@@ -413,6 +417,33 @@ let JourneyPlansService = class JourneyPlansService {
         await this.journeyPlanRepository.update(id, updateData);
         return this.findOne(id);
     }
+    async uploadCheckInPhoto(journeyPlanId, file) {
+        this.logger.log(`📸 Starting check-in photo upload for journey plan ${journeyPlanId}`);
+        if (file.size > 5 * 1024 * 1024) {
+            throw new common_1.BadRequestException('File size must be less than 5MB');
+        }
+        try {
+            const journeyPlan = await this.findOne(journeyPlanId);
+            if (!journeyPlan) {
+                throw new common_1.NotFoundException(`Journey plan with ID ${journeyPlanId} not found`);
+            }
+            const uploadResult = await this.cloudinaryService.uploadToCloudinary(file.buffer, {
+                folder: 'whoosh/checkin_photos',
+                mimetype: file.mimetype,
+                public_id: `checkin_${journeyPlanId}_${Date.now()}`,
+            });
+            this.logger.log(`✅ Check-in photo uploaded successfully: ${uploadResult.url}`);
+            await this.journeyPlanRepository.update(journeyPlanId, {
+                imageUrl: uploadResult.url,
+            });
+            this.logger.log(`✅ Journey plan ${journeyPlanId} updated with photo URL: ${uploadResult.url}`);
+            return uploadResult.url;
+        }
+        catch (error) {
+            this.logger.error(`❌ Error uploading check-in photo for journey plan ${journeyPlanId}:`, error);
+            throw error;
+        }
+    }
     async remove(id) {
         const journeyPlan = await this.findOne(id);
         if (!journeyPlan) {
@@ -440,7 +471,7 @@ let JourneyPlansService = class JourneyPlansService {
     }
 };
 exports.JourneyPlansService = JourneyPlansService;
-exports.JourneyPlansService = JourneyPlansService = __decorate([
+exports.JourneyPlansService = JourneyPlansService = JourneyPlansService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(journey_plan_entity_1.JourneyPlan)),
     __param(1, (0, typeorm_1.InjectRepository)(clients_entity_1.Clients)),
@@ -448,6 +479,7 @@ exports.JourneyPlansService = JourneyPlansService = __decorate([
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.DataSource])
+        typeorm_2.DataSource,
+        cloudinary_service_1.CloudinaryService])
 ], JourneyPlansService);
 //# sourceMappingURL=journey-plans.service.js.map

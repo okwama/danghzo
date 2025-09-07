@@ -18,13 +18,14 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const order_entity_1 = require("./entities/order.entity");
 const order_item_entity_1 = require("./entities/order-item.entity");
+const clients_entity_1 = require("../entities/clients.entity");
 let OrdersService = class OrdersService {
     constructor(orderRepository, orderItemRepository, dataSource) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.dataSource = dataSource;
     }
-    async create(createOrderDto, salesrepId) {
+    async create(createOrderDto, salesrepId, salesrepName) {
         let retryCount = 0;
         const maxRetries = 3;
         while (retryCount < maxRetries) {
@@ -32,6 +33,13 @@ let OrdersService = class OrdersService {
             await queryRunner.connect();
             await queryRunner.startTransaction();
             try {
+                const client = await queryRunner.manager.findOne(clients_entity_1.Clients, {
+                    where: { id: createOrderDto.clientId },
+                    select: ['id', 'name', 'balance', 'credit_limit']
+                });
+                if (!client) {
+                    throw new Error('Client not found');
+                }
                 const soNumber = createOrderDto.soNumber || await this.generateSoNumber();
                 let subtotal = 0;
                 let taxAmount = 0;
@@ -48,6 +56,20 @@ let OrdersService = class OrdersService {
                     totalAmount += itemTotal;
                     netPrice += itemTotal;
                 }
+                const currentBalance = Number(client.balance) || 0;
+                const creditLimit = Number(client.credit_limit) || 0;
+                const newBalance = currentBalance + totalAmount;
+                let creditLimitWarning = null;
+                if (newBalance > creditLimit && creditLimit > 0) {
+                    creditLimitWarning = {
+                        currentBalance,
+                        creditLimit,
+                        orderAmount: totalAmount,
+                        newBalance,
+                        exceedsBy: newBalance - creditLimit
+                    };
+                    console.log(`⚠️ Credit limit exceeded for client ${client.name}: Current: ${currentBalance}, Limit: ${creditLimit}, New Balance: ${newBalance}`);
+                }
                 const orderData = {
                     soNumber: soNumber,
                     clientId: createOrderDto.clientId,
@@ -58,14 +80,14 @@ let OrdersService = class OrdersService {
                     totalAmount: totalAmount,
                     netPrice: netPrice,
                     notes: createOrderDto.comment || createOrderDto.notes,
-                    createdBy: null,
+                    createdBy: salesrepName,
                     salesrep: salesrepId,
                     riderId: createOrderDto.riderId,
                     status: createOrderDto.status || 'draft',
                     myStatus: createOrderDto.myStatus || 0,
                 };
-                const order = this.orderRepository.create(orderData);
-                const savedOrder = await queryRunner.manager.save(order);
+                const newOrder = this.orderRepository.create(orderData);
+                const savedOrder = await queryRunner.manager.save(newOrder);
                 for (const itemDto of createOrderDto.orderItems) {
                     const itemUnitPrice = itemDto.unitPrice || 0;
                     const itemQuantity = itemDto.quantity || 0;
@@ -87,10 +109,16 @@ let OrdersService = class OrdersService {
                     await queryRunner.manager.save(orderItem);
                 }
                 await queryRunner.commitTransaction();
-                return this.findOne(savedOrder.id);
+                await queryRunner.release();
+                const createdOrder = await this.findOne(savedOrder.id);
+                return {
+                    order: createdOrder,
+                    creditLimitWarning
+                };
             }
             catch (error) {
                 await queryRunner.rollbackTransaction();
+                await queryRunner.release();
                 if (error.message && error.message.includes('Duplicate entry') && error.message.includes('so_number')) {
                     retryCount++;
                     if (retryCount >= maxRetries) {
@@ -100,9 +128,6 @@ let OrdersService = class OrdersService {
                     continue;
                 }
                 throw error;
-            }
-            finally {
-                await queryRunner.release();
             }
         }
         throw new Error('Failed to create order after maximum retries');
@@ -178,7 +203,6 @@ let OrdersService = class OrdersService {
     }
     async findOne(id, salesrepId) {
         const query = this.orderRepository.createQueryBuilder('order')
-            .leftJoinAndSelect('order.user', 'user')
             .leftJoinAndSelect('order.client', 'client')
             .leftJoinAndSelect('order.orderItems', 'orderItems')
             .leftJoinAndSelect('orderItems.product', 'product')

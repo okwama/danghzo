@@ -13,7 +13,6 @@ exports.Order = void 0;
 const typeorm_1 = require("typeorm");
 const clients_entity_1 = require("../../entities/clients.entity");
 const order_item_entity_1 = require("./order-item.entity");
-const users_entity_1 = require("../../users/entities/users.entity");
 let Order = class Order {
 };
 exports.Order = Order;
@@ -58,8 +57,8 @@ __decorate([
     __metadata("design:type", String)
 ], Order.prototype, "notes", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'created_by', type: 'int', nullable: true }),
-    __metadata("design:type", Number)
+    (0, typeorm_1.Column)({ name: 'created_by', type: 'varchar', nullable: true }),
+    __metadata("design:type", String)
 ], Order.prototype, "createdBy", void 0);
 __decorate([
     (0, typeorm_1.Column)({ name: 'salesrep', type: 'int', nullable: true }),
@@ -81,11 +80,6 @@ __decorate([
     (0, typeorm_1.Column)({ name: 'my_status', type: 'tinyint' }),
     __metadata("design:type", Number)
 ], Order.prototype, "myStatus", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => users_entity_1.Users, { nullable: true }),
-    (0, typeorm_1.JoinColumn)({ name: 'created_by' }),
-    __metadata("design:type", users_entity_1.Users)
-], Order.prototype, "user", void 0);
 __decorate([
     (0, typeorm_1.ManyToOne)(() => clients_entity_1.Clients),
     (0, typeorm_1.JoinColumn)({ name: 'client_id' }),

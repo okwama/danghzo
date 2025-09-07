@@ -1,0 +1,1065 @@
+{
+    "info": {
+      "name": "Woosh API",
+      "description": "Complete API collection for Woosh sales management application",
+      "version": "1.0.0",
+      "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "auth": {
+      "type": "bearer",
+      "bearer": [
+        {
+          "key": "token",
+          "value": "{{jwt_token}}",
+          "type": "string"
+        }
+      ]
+    },
+    "variable": [
+      {
+        "key": "base_url",
+        "value": "http://localhost:3000/api",
+        "type": "string"
+      },
+      {
+        "key": "jwt_token",
+        "value": "",
+        "type": "string"
+      }
+    ],
+    "item": [
+      {
+        "name": "Authentication",
+        "item": [
+          {
+            "name": "Login",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"phoneNumber\": \"+254123456789\",\n  \"password\": \"password123\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/auth/login",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "login"]
+              }
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "exec": [
+                    "if (pm.response.code === 200) {",
+                    "    const response = pm.response.json();",
+                    "    pm.collectionVariables.set('jwt_token', response.access_token);",
+                    "}"
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "name": "Get Profile",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/auth/profile",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "profile"]
+              }
+            }
+          },
+          {
+            "name": "Logout",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/auth/logout",
+                "host": ["{{base_url}}"],
+                "path": ["auth", "logout"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Users",
+        "item": [
+          {
+            "name": "Get All Users",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/users",
+                "host": ["{{base_url}}"],
+                "path": ["users"]
+              }
+            }
+          },
+          {
+            "name": "Get User Profile",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/users/profile",
+                "host": ["{{base_url}}"],
+                "path": ["users", "profile"]
+              }
+            }
+          },
+          {
+            "name": "Get User by ID",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/users/1",
+                "host": ["{{base_url}}"],
+                "path": ["users", "1"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Clients",
+        "item": [
+          {
+            "name": "Get All Clients",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clients",
+                "host": ["{{base_url}}"],
+                "path": ["clients"]
+              }
+            }
+          },
+          {
+            "name": "Search Clients",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clients/search?name=John&page=1&limit=10",
+                "host": ["{{base_url}}"],
+                "path": ["clients", "search"],
+                "query": [
+                  {
+                    "key": "name",
+                    "value": "John"
+                  },
+                  {
+                    "key": "page",
+                    "value": "1"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "10"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Get Client by ID",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clients/1",
+                "host": ["{{base_url}}"],
+                "path": ["clients", "1"]
+              }
+            }
+          },
+          {
+            "name": "Create Client",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"name\": \"New Client\",\n  \"address\": \"123 Main St\",\n  \"latitude\": -1.2921,\n  \"longitude\": 36.8219,\n  \"email\": \"client@example.com\",\n  \"regionId\": 1,\n  \"region\": \"Nairobi\",\n  \"contact\": \"+254123456789\",\n  \"countryId\": 1\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/clients",
+                "host": ["{{base_url}}"],
+                "path": ["clients"]
+              }
+            }
+          },
+          {
+            "name": "Find Nearby Clients",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clients/location/nearby?latitude=-1.2921&longitude=36.8219&radius=10",
+                "host": ["{{base_url}}"],
+                "path": ["clients", "location", "nearby"],
+                "query": [
+                  {
+                    "key": "latitude",
+                    "value": "-1.2921"
+                  },
+                  {
+                    "key": "longitude",
+                    "value": "36.8219"
+                  },
+                  {
+                    "key": "radius",
+                    "value": "10"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Get Client Stats",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clients/stats/overview",
+                "host": ["{{base_url}}"],
+                "path": ["clients", "stats", "overview"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Products",
+        "item": [
+          {
+            "name": "Get All Products",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/products",
+                "host": ["{{base_url}}"],
+                "path": ["products"]
+              }
+            }
+          },
+          {
+            "name": "Get Product by ID",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/products/1",
+                "host": ["{{base_url}}"],
+                "path": ["products", "1"]
+              }
+            }
+          },
+          {
+            "name": "Get Products by Country",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/products/country/1",
+                "host": ["{{base_url}}"],
+                "path": ["products", "country", "1"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Orders",
+        "item": [
+          {
+            "name": "Get All Orders",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/orders?page=1&limit=10",
+                "host": ["{{base_url}}"],
+                "path": ["orders"],
+                "query": [
+                  {
+                    "key": "page",
+                    "value": "1"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "10"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Get Order by ID",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/orders/1",
+                "host": ["{{base_url}}"],
+                "path": ["orders", "1"]
+              }
+            }
+          },
+          {
+            "name": "Create Order",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"clientId\": 1,\n  \"orderDate\": \"2024-01-15T10:00:00Z\",\n  \"expectedDeliveryDate\": \"2024-01-20T10:00:00Z\",\n  \"notes\": \"Urgent delivery required\",\n  \"orderItems\": [\n    {\n      \"productId\": 1,\n      \"quantity\": 10,\n      \"unitPrice\": 25.50\n    }\n  ]\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/orders",
+                "host": ["{{base_url}}"],
+                "path": ["orders"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Journey Plans",
+        "item": [
+          {
+            "name": "Get Journey Plans",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/journey-plans?page=1&limit=20",
+                "host": ["{{base_url}}"],
+                "path": ["journey-plans"],
+                "query": [
+                  {
+                    "key": "page",
+                    "value": "1"
+                  },
+                  {
+                    "key": "limit",
+                    "value": "20"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Get Journey Plans by Date",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/journey-plans/by-date?startDate=2024-01-15&endDate=2024-01-15",
+                "host": ["{{base_url}}"],
+                "path": ["journey-plans", "by-date"],
+                "query": [
+                  {
+                    "key": "startDate",
+                    "value": "2024-01-15"
+                  },
+                  {
+                    "key": "endDate",
+                    "value": "2024-01-15"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Checkout from Journey Plan",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"checkoutTime\": \"2024-01-15T17:00:00Z\",\n  \"checkoutLatitude\": -1.2921,\n  \"checkoutLongitude\": 36.8219\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/journey-plans/1/checkout",
+                "host": ["{{base_url}}"],
+                "path": ["journey-plans", "1", "checkout"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Clock In/Out",
+        "item": [
+          {
+            "name": "Clock In",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"userId\": 1,\n  \"clockInTime\": \"2024-01-15T08:00:00Z\",\n  \"latitude\": -1.2921,\n  \"longitude\": 36.8219,\n  \"location\": \"Nairobi Office\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/clock-in-out/clock-in",
+                "host": ["{{base_url}}"],
+                "path": ["clock-in-out", "clock-in"]
+              }
+            }
+          },
+          {
+            "name": "Clock Out",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"userId\": 1,\n  \"clockOutTime\": \"2024-01-15T17:00:00Z\",\n  \"latitude\": -1.2921,\n  \"longitude\": 36.8219,\n  \"location\": \"Client Location\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/clock-in-out/clock-out",
+                "host": ["{{base_url}}"],
+                "path": ["clock-in-out", "clock-out"]
+              }
+            }
+          },
+          {
+            "name": "Get Clock Status",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clock-in-out/status/1",
+                "host": ["{{base_url}}"],
+                "path": ["clock-in-out", "status", "1"]
+              }
+            }
+          },
+          {
+            "name": "Get Today's Sessions",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clock-in-out/today/1",
+                "host": ["{{base_url}}"],
+                "path": ["clock-in-out", "today", "1"]
+              }
+            }
+          },
+          {
+            "name": "Get Clock History",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/clock-in-out/history/1?startDate=2024-01-01&endDate=2024-01-31",
+                "host": ["{{base_url}}"],
+                "path": ["clock-in-out", "history", "1"],
+                "query": [
+                  {
+                    "key": "startDate",
+                    "value": "2024-01-01"
+                  },
+                  {
+                    "key": "endDate",
+                    "value": "2024-01-31"
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Payments",
+        "item": [
+          {
+            "name": "Get Client Payments",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/outlets/1/payments",
+                "host": ["{{base_url}}"],
+                "path": ["outlets", "1", "payments"]
+              }
+            }
+          },
+          {
+            "name": "Upload Payment",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  {
+                    "key": "amount",
+                    "value": "1500.00",
+                    "type": "text"
+                  },
+                  {
+                    "key": "method",
+                    "value": "cash",
+                    "type": "text"
+                  },
+                  {
+                    "key": "image",
+                    "type": "file",
+                    "src": []
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{base_url}}/outlets/1/payments",
+                "host": ["{{base_url}}"],
+                "path": ["outlets", "1", "payments"]
+              }
+            }
+          },
+          {
+            "name": "Get Sales Rep Payments",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/outlets/payments/salesrep/1",
+                "host": ["{{base_url}}"],
+                "path": ["outlets", "payments", "salesrep", "1"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Leave Management",
+        "item": [
+          {
+            "name": "Get Leave Types",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/leave/types/all",
+                "host": ["{{base_url}}"],
+                "path": ["leave", "types", "all"]
+              }
+            }
+          },
+          {
+            "name": "Get Leave Balance",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/leave/balance/user",
+                "host": ["{{base_url}}"],
+                "path": ["leave", "balance", "user"]
+              }
+            }
+          },
+          {
+            "name": "Get Leave Requests",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/leave",
+                "host": ["{{base_url}}"],
+                "path": ["leave"]
+              }
+            }
+          },
+          {
+            "name": "Create Leave Request",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  {
+                    "key": "userId",
+                    "value": "1",
+                    "type": "text"
+                  },
+                  {
+                    "key": "leaveType",
+                    "value": "annual",
+                    "type": "text"
+                  },
+                  {
+                    "key": "startDate",
+                    "value": "2024-01-20",
+                    "type": "text"
+                  },
+                  {
+                    "key": "endDate",
+                    "value": "2024-01-22",
+                    "type": "text"
+                  },
+                  {
+                    "key": "reason",
+                    "value": "Personal vacation",
+                    "type": "text"
+                  },
+                  {
+                    "key": "attachment",
+                    "type": "file",
+                    "src": []
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{base_url}}/leave",
+                "host": ["{{base_url}}"],
+                "path": ["leave"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Targets",
+        "item": [
+          {
+            "name": "Get Monthly Visits",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/targets/monthly-visits/1",
+                "host": ["{{base_url}}"],
+                "path": ["targets", "monthly-visits", "1"]
+              }
+            }
+          },
+          {
+            "name": "Get Dashboard",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/targets/dashboard/1?period=current_month",
+                "host": ["{{base_url}}"],
+                "path": ["targets", "dashboard", "1"],
+                "query": [
+                  {
+                    "key": "period",
+                    "value": "current_month"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Get Visit Statistics",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/targets/visit-statistics/1",
+                "host": ["{{base_url}}"],
+                "path": ["targets", "visit-statistics", "1"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Reports",
+        "item": [
+          {
+            "name": "Submit Report",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"type\": \"client_visit\",\n  \"journeyPlanId\": 1,\n  \"userId\": 1,\n  \"clientId\": 1,\n  \"data\": {\n    \"visitDuration\": 30,\n    \"notes\": \"Successful client meeting\"\n  }\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/reports",
+                "host": ["{{base_url}}"],
+                "path": ["reports"]
+              }
+            }
+          },
+          {
+            "name": "Get All Reports",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/reports",
+                "host": ["{{base_url}}"],
+                "path": ["reports"]
+              }
+            }
+          },
+          {
+            "name": "Get Reports by Journey Plan",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/reports/journey-plan/1",
+                "host": ["{{base_url}}"],
+                "path": ["reports", "journey-plan", "1"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Notices",
+        "item": [
+          {
+            "name": "Get All Notices",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/notices",
+                "host": ["{{base_url}}"],
+                "path": ["notices"]
+              }
+            }
+          },
+          {
+            "name": "Get Notice by ID",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/notices/1",
+                "host": ["{{base_url}}"],
+                "path": ["notices", "1"]
+              }
+            }
+          },
+          {
+            "name": "Create Notice",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"title\": \"Important Notice\",\n  \"content\": \"This is an important company announcement\",\n  \"countryId\": 1\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/notices",
+                "host": ["{{base_url}}"],
+                "path": ["notices"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Tasks",
+        "item": [
+          {
+            "name": "Get All Tasks",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/tasks?userId=1",
+                "host": ["{{base_url}}"],
+                "path": ["tasks"],
+                "query": [
+                  {
+                    "key": "userId",
+                    "value": "1"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "name": "Complete Task",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/tasks/1/complete",
+                "host": ["{{base_url}}"],
+                "path": ["tasks", "1", "complete"]
+              }
+            }
+          },
+          {
+            "name": "Update Task Status",
+            "request": {
+              "method": "PATCH",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"status\": \"completed\"\n}"
+              },
+              "url": {
+                "raw": "{{base_url}}/tasks/1/status",
+                "host": ["{{base_url}}"],
+                "path": ["tasks", "1", "status"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Routes",
+        "item": [
+          {
+            "name": "Get All Routes",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/routes",
+                "host": ["{{base_url}}"],
+                "path": ["routes"]
+              }
+            }
+          },
+          {
+            "name": "Get Active Routes",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/routes/active",
+                "host": ["{{base_url}}"],
+                "path": ["routes", "active"]
+              }
+            }
+          },
+          {
+            "name": "Get Routes by Region",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/routes/region/1",
+                "host": ["{{base_url}}"],
+                "path": ["routes", "region", "1"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Analytics",
+        "item": [
+          {
+            "name": "Get Analytics",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/analytics",
+                "host": ["{{base_url}}"],
+                "path": ["analytics"]
+              }
+            }
+          },
+          {
+            "name": "Get Daily Login Hours",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/analytics/daily-login-hours/1",
+                "host": ["{{base_url}}"],
+                "path": ["analytics", "daily-login-hours", "1"]
+              }
+            }
+          },
+          {
+            "name": "Get Daily Journey Visits",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/analytics/daily-journey-visits/1",
+                "host": ["{{base_url}}"],
+                "path": ["analytics", "daily-journey-visits", "1"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Uploads",
+        "item": [
+          {
+            "name": "Upload File",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  {
+                    "key": "file",
+                    "type": "file",
+                    "src": []
+                  },
+                  {
+                    "key": "description",
+                    "value": "File description",
+                    "type": "text"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{base_url}}/uploads/upload",
+                "host": ["{{base_url}}"],
+                "path": ["uploads", "upload"]
+              }
+            }
+          },
+          {
+            "name": "Get All Uploads",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/uploads",
+                "host": ["{{base_url}}"],
+                "path": ["uploads"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Excel Import",
+        "item": [
+          {
+            "name": "Upload Excel File",
+            "request": {
+              "method": "POST",
+              "header": [],
+              "body": {
+                "mode": "formdata",
+                "formdata": [
+                  {
+                    "key": "file",
+                    "type": "file",
+                    "src": []
+                  },
+                  {
+                    "key": "type",
+                    "value": "clients",
+                    "type": "text"
+                  }
+                ]
+              },
+              "url": {
+                "raw": "{{base_url}}/excel-import/upload",
+                "host": ["{{base_url}}"],
+                "path": ["excel-import", "upload"]
+              }
+            }
+          },
+          {
+            "name": "Get Import Records",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/excel-import",
+                "host": ["{{base_url}}"],
+                "path": ["excel-import"]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "Version & Health",
+        "item": [
+          {
+            "name": "Get API Version",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/version",
+                "host": ["{{base_url}}"],
+                "path": ["version"]
+              }
+            }
+          },
+          {
+            "name": "Health Check - Products",
+            "request": {
+              "method": "GET",
+              "header": [],
+              "url": {
+                "raw": "{{base_url}}/health/products",
+                "host": ["{{base_url}}"],
+                "path": ["health", "products"]
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }

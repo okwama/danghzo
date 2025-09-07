@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Put, Param, Delete, UseGuards, Query, HttpCode, HttpStatus, Req, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { JourneyPlansService } from './journey-plans.service';
 import { CreateJourneyPlanDto } from './dto/create-journey-plan.dto';
 import { UpdateJourneyPlanDto } from './dto/update-journey-plan.dto';
@@ -92,5 +93,25 @@ export class JourneyPlansController {
     },
   ) {
     return this.journeyPlansService.checkout(+id, checkoutDto);
+  }
+
+  @Post(':id/upload-photo')
+  @HttpCode(HttpStatus.OK)
+  @UseInterceptors(FileInterceptor('photo'))
+  async uploadCheckInPhoto(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: Request,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No photo file provided');
+    }
+
+    try {
+      const photoUrl = await this.journeyPlansService.uploadCheckInPhoto(+id, file);
+      return { photoUrl };
+    } catch (error) {
+      throw error;
+    }
   }
 } 

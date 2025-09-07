@@ -106,4 +106,62 @@ export class AuthService {
       throw new UnauthorizedException('Invalid token');
     }
   }
+
+  async refreshToken(refreshToken: string): Promise<any> {
+    this.logger.log('🔄 Refreshing JWT token');
+    
+    try {
+      // Verify the refresh token
+      const payload = this.jwtService.verify(refreshToken);
+      this.logger.log(`✅ Refresh token verified for user ID: ${payload.sub}`);
+      
+      // Get user from database
+      const user = await this.usersService.findById(payload.sub);
+      if (!user || user.status !== 1) {
+        this.logger.warn(`❌ User not found or inactive for refresh token user ID: ${payload.sub}`);
+        throw new UnauthorizedException('Invalid refresh token or user inactive');
+      }
+      
+      // Generate new access token
+      const newPayload = { 
+        phoneNumber: user.phoneNumber, 
+        sub: user.id,
+        role: user.role,
+        countryId: user.countryId,
+        regionId: user.region_id,
+        routeId: user.route_id
+      };
+      
+      const newAccessToken = this.jwtService.sign(newPayload);
+      const newRefreshToken = this.jwtService.sign(newPayload, { expiresIn: '7d' });
+      
+      this.logger.log(`✅ New tokens generated for user: ${user.name}`);
+      
+      const response = {
+        success: true,
+        message: 'Token refreshed successfully',
+        accessToken: newAccessToken,
+        refreshToken: newRefreshToken,
+        expiresIn: 32400, // 9 hours in seconds
+        salesRep: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phoneNumber,
+          role: user.role,
+          countryId: user.countryId,
+          regionId: user.region_id,
+          routeId: user.route_id,
+          status: user.status,
+          photoUrl: user.photoUrl
+        }
+      };
+      
+      this.logger.log(`📤 Refresh response prepared for user: ${user.name}`);
+      return response;
+    } catch (error) {
+      this.logger.error('❌ Refresh token validation failed', error.stack);
+      throw new UnauthorizedException('Invalid refresh token');
+    }
+  }
 } 

@@ -1,0 +1,30 @@
+import { Cache } from 'cache-manager';
+export declare class DataCacheService {
+    private cacheManager;
+    private readonly logger;
+    constructor(cacheManager: Cache);
+    private readonly CLIENTS_LIST_KEY;
+    private readonly CLIENTS_DETAIL_KEY;
+    private readonly PRODUCTS_LIST_KEY;
+    private readonly PRODUCTS_DETAIL_KEY;
+    private readonly PRODUCTS_CATEGORIES_KEY;
+    private readonly CLIENTS_TTL;
+    private readonly PRODUCTS_TTL;
+    private readonly CATEGORIES_TTL;
+    cacheClientsList(page: number, limit: number, clients: any[], filters?: any): Promise<void>;
+    getCachedClientsList(page: number, limit: number, filters?: any): Promise<any[] | null>;
+    cacheClientDetail(clientId: number, clientData: any): Promise<void>;
+    getCachedClientDetail(clientId: number): Promise<any | null>;
+    cacheProductsList(page: number, limit: number, products: any[], filters?: any): Promise<void>;
+    getCachedProductsList(page: number, limit: number, filters?: any): Promise<any[] | null>;
+    cacheProductDetail(productId: number, productData: any): Promise<void>;
+    getCachedProductDetail(productId: number): Promise<any | null>;
+    cacheProductCategories(categories: any[]): Promise<void>;
+    getCachedProductCategories(): Promise<any[] | null>;
+    invalidateClientsCache(): Promise<void>;
+    invalidateClientCache(clientId: number): Promise<void>;
+    invalidateProductsCache(): Promise<void>;
+    invalidateProductCache(productId: number): Promise<void>;
+    private getClientsListKey;
+    private getProductsListKey;
+}

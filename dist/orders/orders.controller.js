@@ -17,16 +17,30 @@ const common_1 = require("@nestjs/common");
 const orders_service_1 = require("./orders.service");
 const create_order_dto_1 = require("./dto/create-order.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const users_service_1 = require("../users/users.service");
 let OrdersController = class OrdersController {
-    constructor(ordersService) {
+    constructor(ordersService, usersService) {
         this.ordersService = ordersService;
+        this.usersService = usersService;
     }
     async create(createOrderDto, req) {
+        console.log('🔍 Received order data:', JSON.stringify(createOrderDto, null, 2));
         const salesrepId = req.user?.sub || req.user?.id;
-        const order = await this.ordersService.create(createOrderDto, salesrepId);
+        let salesrepName = 'Unknown Sales Rep';
+        try {
+            const salesRep = await this.usersService.findById(salesrepId);
+            if (salesRep) {
+                salesrepName = salesRep.name;
+            }
+        }
+        catch (error) {
+            console.error('❌ Error fetching sales rep name:', error);
+        }
+        const result = await this.ordersService.create(createOrderDto, salesrepId, salesrepName);
         return {
             success: true,
-            data: order
+            data: result.order,
+            warning: result.creditLimitWarning
         };
     }
     async findAll(req, page = '1', limit = '10', status, clientId, startDate, endDate) {
@@ -147,6 +161,7 @@ __decorate([
 exports.OrdersController = OrdersController = __decorate([
     (0, common_1.Controller)('orders'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [orders_service_1.OrdersService])
+    __metadata("design:paramtypes", [orders_service_1.OrdersService,
+        users_service_1.UsersService])
 ], OrdersController);
 //# sourceMappingURL=orders.controller.js.map

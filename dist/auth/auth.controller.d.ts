@@ -23,8 +23,11 @@ export declare class AuthController {
             photoUrl: any;
         };
     }>;
-    getProfile(req: any): any;
+    getProfile(req: any): Promise<any>;
     logout(): {
         message: string;
     };
+    refreshToken(body: {
+        refreshToken: string;
+    }): Promise<any>;
 }

@@ -44,7 +44,13 @@ export class TasksService {
   }
 
   async completeTask(id: number): Promise<Task> {
-    await this.taskRepository.update(id, { status: 'COMPLETED' });
+    const updateData = {
+      status: 'COMPLETED',
+      isCompleted: true,
+      completedAt: new Date()
+    };
+    
+    await this.taskRepository.update(id, updateData);
     return this.findOne(id);
   }
 } 

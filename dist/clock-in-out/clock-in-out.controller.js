@@ -35,8 +35,10 @@ let ClockInOutController = class ClockInOutController {
     async getTodaySessions(userId) {
         return await this.clockInOutService.getTodaySessions(parseInt(userId));
     }
-    async getClockHistory(userId, startDate, endDate) {
-        return await this.clockInOutService.getClockSessionsWithProcedure(parseInt(userId), startDate, endDate);
+    async getUserSessions(userId, period = 'today', startDate, endDate, limit) {
+        const parsedLimit = limit ? parseInt(limit, 10) : 50;
+        const validLimit = isNaN(parsedLimit) ? 50 : Math.min(parsedLimit, 100);
+        return await this.clockInOutService.getUserSessions(parseInt(userId), period, startDate, endDate, validLimit);
     }
     async triggerAutoClockOut() {
         return await this.clockOutSchedulerService.manualTriggerClockOut();
@@ -81,14 +83,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ClockInOutController.prototype, "getTodaySessions", null);
 __decorate([
-    (0, common_1.Get)('history/:userId'),
+    (0, common_1.Get)('sessions/:userId'),
     __param(0, (0, common_1.Param)('userId')),
-    __param(1, (0, common_1.Query)('startDate')),
-    __param(2, (0, common_1.Query)('endDate')),
+    __param(1, (0, common_1.Query)('period')),
+    __param(2, (0, common_1.Query)('startDate')),
+    __param(3, (0, common_1.Query)('endDate')),
+    __param(4, (0, common_1.Query)('limit')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String]),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
     __metadata("design:returntype", Promise)
-], ClockInOutController.prototype, "getClockHistory", null);
+], ClockInOutController.prototype, "getUserSessions", null);
 __decorate([
     (0, common_1.Post)('trigger-auto-clockout'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),

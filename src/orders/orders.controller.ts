@@ -2,22 +2,42 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, 
 import { OrdersService } from './orders.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UsersService } from '../users/users.service';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
-  constructor(private readonly ordersService: OrdersService) {}
+  constructor(
+    private readonly ordersService: OrdersService,
+    private readonly usersService: UsersService
+  ) {}
 
   @Post()
   async create(@Body() createOrderDto: CreateOrderDto, @Request() req) {
+    // Debug logging
+    console.log('🔍 Received order data:', JSON.stringify(createOrderDto, null, 2));
+    
     // Extract salesrep ID from JWT token
     const salesrepId = req.user?.sub || req.user?.id;
-    const order = await this.ordersService.create(createOrderDto, salesrepId);
+    
+    // Get sales rep name from database
+    let salesrepName = 'Unknown Sales Rep';
+    try {
+      const salesRep = await this.usersService.findById(salesrepId);
+      if (salesRep) {
+        salesrepName = salesRep.name;
+      }
+    } catch (error) {
+      console.error('❌ Error fetching sales rep name:', error);
+    }
+    
+    const result = await this.ordersService.create(createOrderDto, salesrepId, salesrepName);
     
     // Return in format expected by Flutter app
     return {
       success: true,
-      data: order
+      data: result.order,
+      warning: result.creditLimitWarning
     };
   }
 

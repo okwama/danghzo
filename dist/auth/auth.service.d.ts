@@ -26,4 +26,5 @@ export declare class AuthService {
         };
     }>;
     validateToken(token: string): Promise<any>;
+    refreshToken(refreshToken: string): Promise<any>;
 }

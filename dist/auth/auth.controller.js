@@ -44,13 +44,33 @@ let AuthController = AuthController_1 = class AuthController {
             throw error;
         }
     }
-    getProfile(req) {
+    async getProfile(req) {
         this.logger.log(`👤 Profile request for user: ${req.user?.name || 'Unknown'}`);
-        return req.user;
+        try {
+            const fullUser = await this.authService.validateToken(req.headers.authorization?.replace('Bearer ', ''));
+            this.logger.log(`✅ Full user data retrieved: ${fullUser.name}`);
+            return fullUser;
+        }
+        catch (error) {
+            this.logger.error('❌ Error retrieving full user data', error.stack);
+            throw new common_1.UnauthorizedException('Failed to retrieve user profile');
+        }
     }
     logout() {
         this.logger.log('🚪 Logout request received');
         return { message: 'Logged out successfully' };
+    }
+    async refreshToken(body) {
+        this.logger.log('🔄 Refresh token request received');
+        try {
+            const result = await this.authService.refreshToken(body.refreshToken);
+            this.logger.log('✅ Refresh token successful');
+            return result;
+        }
+        catch (error) {
+            this.logger.error('❌ Refresh token failed', error.stack);
+            throw error;
+        }
     }
 };
 exports.AuthController = AuthController;
@@ -68,7 +88,7 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getProfile", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
@@ -77,6 +97,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AuthController.prototype, "logout", null);
+__decorate([
+    (0, common_1.Post)('refresh'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "refreshToken", null);
 exports.AuthController = AuthController = AuthController_1 = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService])

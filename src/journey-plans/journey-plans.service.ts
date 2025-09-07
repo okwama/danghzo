@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder, DataSource } from 'typeorm';
 import { JourneyPlan } from './entities/journey-plan.entity';
@@ -6,6 +6,7 @@ import { Clients } from '../entities/clients.entity';
 import { SalesRep } from '../entities/sales-rep.entity';
 import { CreateJourneyPlanDto } from './dto/create-journey-plan.dto';
 import { UpdateJourneyPlanDto } from './dto/update-journey-plan.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 
 interface FindAllOptions {
   page: number;
@@ -28,6 +29,8 @@ interface FindByDateRangeOptions {
 
 @Injectable()
 export class JourneyPlansService {
+  private readonly logger = new Logger(JourneyPlansService.name);
+
   constructor(
     @InjectRepository(JourneyPlan)
     private journeyPlanRepository: Repository<JourneyPlan>,
@@ -36,6 +39,7 @@ export class JourneyPlansService {
     @InjectRepository(SalesRep)
     private salesRepRepository: Repository<SalesRep>,
     private dataSource: DataSource,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   // Helper method to provide fallback coordinates
@@ -534,6 +538,44 @@ export class JourneyPlansService {
 
     await this.journeyPlanRepository.update(id, updateData);
     return this.findOne(id);
+  }
+
+  async uploadCheckInPhoto(journeyPlanId: number, file: Express.Multer.File): Promise<string> {
+    this.logger.log(`📸 Starting check-in photo upload for journey plan ${journeyPlanId}`);
+    
+    // Validate file size (5MB limit)
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('File size must be less than 5MB');
+    }
+
+    try {
+      // Check if journey plan exists
+      const journeyPlan = await this.findOne(journeyPlanId);
+      if (!journeyPlan) {
+        throw new NotFoundException(`Journey plan with ID ${journeyPlanId} not found`);
+      }
+
+      // Upload to Cloudinary
+      const uploadResult = await this.cloudinaryService.uploadToCloudinary(file.buffer, {
+        folder: 'whoosh/checkin_photos',
+        mimetype: file.mimetype,
+        public_id: `checkin_${journeyPlanId}_${Date.now()}`,
+      });
+
+      this.logger.log(`✅ Check-in photo uploaded successfully: ${uploadResult.url}`);
+
+      // Update journey plan with photo URL
+      await this.journeyPlanRepository.update(journeyPlanId, {
+        imageUrl: uploadResult.url,
+      });
+
+      this.logger.log(`✅ Journey plan ${journeyPlanId} updated with photo URL: ${uploadResult.url}`);
+
+      return uploadResult.url;
+    } catch (error) {
+      this.logger.error(`❌ Error uploading check-in photo for journey plan ${journeyPlanId}:`, error);
+      throw error;
+    }
   }
 
   async remove(id: number): Promise<void> {

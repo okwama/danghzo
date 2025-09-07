@@ -94,6 +94,10 @@ __decorate([
     __metadata("design:type", Number)
 ], Client.prototype, "outletAccount", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ name: 'credit_limit', type: 'decimal', precision: 11, scale: 2, nullable: true }),
+    __metadata("design:type", Number)
+], Client.prototype, "creditLimit", void 0);
+__decorate([
     (0, typeorm_1.Column)({ name: 'countryId', type: 'int' }),
     __metadata("design:type", Number)
 ], Client.prototype, "countryId", void 0);

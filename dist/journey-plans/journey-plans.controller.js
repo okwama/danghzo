@@ -14,6 +14,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.JourneyPlansController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
 const journey_plans_service_1 = require("./journey-plans.service");
 const create_journey_plan_dto_1 = require("./dto/create-journey-plan.dto");
 const update_journey_plan_dto_1 = require("./dto/update-journey-plan.dto");
@@ -63,6 +64,18 @@ let JourneyPlansController = class JourneyPlansController {
     }
     checkout(id, checkoutDto) {
         return this.journeyPlansService.checkout(+id, checkoutDto);
+    }
+    async uploadCheckInPhoto(id, file, req) {
+        if (!file) {
+            throw new common_1.BadRequestException('No photo file provided');
+        }
+        try {
+            const photoUrl = await this.journeyPlansService.uploadCheckInPhoto(+id, file);
+            return { photoUrl };
+        }
+        catch (error) {
+            throw error;
+        }
     }
 };
 exports.JourneyPlansController = JourneyPlansController;
@@ -131,6 +144,17 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", void 0)
 ], JourneyPlansController.prototype, "checkout", null);
+__decorate([
+    (0, common_1.Post)(':id/upload-photo'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    (0, common_1.UseInterceptors)((0, platform_express_1.FileInterceptor)('photo')),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.UploadedFile)()),
+    __param(2, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], JourneyPlansController.prototype, "uploadCheckInPhoto", null);
 exports.JourneyPlansController = JourneyPlansController = __decorate([
     (0, common_1.Controller)('journey-plans'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

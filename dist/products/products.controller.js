@@ -35,13 +35,14 @@ let ProductsController = class ProductsController {
             throw error;
         }
     }
-    async findProductsByCountry(countryId) {
+    async findProductsByCountry(req) {
         try {
-            console.log(`🌍 Products API: GET /products/country/${countryId} called`);
-            const userCountryId = parseInt(countryId);
-            if (isNaN(userCountryId)) {
-                throw new Error('Invalid country ID');
+            console.log('🌍 Products API: GET /products/country called');
+            const userCountryId = req.user?.countryId;
+            if (!userCountryId) {
+                throw new Error('Country ID not found in user token');
             }
+            console.log(`🌍 Products API: User country from JWT: ${userCountryId}`);
             const products = await this.productsService.findProductsByCountry(userCountryId);
             console.log(`🌍 Products API: Returning ${products.length} products for country ${userCountryId}`);
             return products;
@@ -63,11 +64,11 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findAll", null);
 __decorate([
-    (0, common_1.Get)('country/:countryId'),
+    (0, common_1.Get)('country'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __param(0, (0, common_1.Param)('countryId')),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findProductsByCountry", null);
 __decorate([

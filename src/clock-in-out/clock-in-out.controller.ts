@@ -47,20 +47,29 @@ export class ClockInOutController {
   }
 
   /**
-   * Get clock history with optional date range
+   * Get user sessions with unified endpoint
    */
-  @Get('history/:userId')
-  async getClockHistory(
+  @Get('sessions/:userId')
+  async getUserSessions(
     @Param('userId') userId: string,
+    @Query('period') period: 'today' | 'week' | 'month' | 'custom' = 'today',
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
+    @Query('limit') limit?: string,
   ) {
-    return await this.clockInOutService.getClockSessionsWithProcedure(
+    // Parse limit parameter safely
+    const parsedLimit = limit ? parseInt(limit, 10) : 50;
+    const validLimit = isNaN(parsedLimit) ? 50 : Math.min(parsedLimit, 100); // Cap at 100
+    
+    return await this.clockInOutService.getUserSessions(
       parseInt(userId),
+      period,
       startDate,
       endDate,
+      validLimit,
     );
   }
+
 
   /**
    * Manual trigger for automatic clock-out (for testing)

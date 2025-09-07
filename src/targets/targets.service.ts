@@ -375,7 +375,7 @@ export class TargetsService {
     const queryBuilder = this.upliftSaleRepository.createQueryBuilder('sale');
     queryBuilder
       .leftJoinAndSelect('sale.upliftSaleItems', 'items')
-      .leftJoinAndSelect('items.products', 'product')
+      .leftJoinAndSelect('items.product', 'product')
       .where('sale.userId = :userId', { userId })
       .andWhere('sale.createdAt >= :startDate', { startDate })
       .andWhere('sale.createdAt <= :endDate', { endDate })

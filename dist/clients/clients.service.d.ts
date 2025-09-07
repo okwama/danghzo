@@ -1,12 +1,17 @@
 import { Repository } from 'typeorm';
 import { Clients } from '../entities/clients.entity';
+import { ClientAssignment } from '../entities/client-assignment.entity';
 import { CreateClientDto } from './dto/create-client.dto';
 import { SearchClientsDto } from './dto/search-clients.dto';
+import { DatabaseResilienceService } from '../config/database-resilience.service';
 export declare class ClientsService {
     private clientRepository;
-    constructor(clientRepository: Repository<Clients>);
+    private clientAssignmentRepository;
+    private readonly databaseResilienceService;
+    private readonly logger;
+    constructor(clientRepository: Repository<Clients>, clientAssignmentRepository: Repository<ClientAssignment>, databaseResilienceService: DatabaseResilienceService);
     create(createClientDto: CreateClientDto, userCountryId: number): Promise<Clients>;
-    findAll(userCountryId: number): Promise<Clients[]>;
+    findAll(userCountryId: number, userId?: number): Promise<Clients[]>;
     findOne(id: number, userCountryId: number): Promise<Clients | null>;
     findOneBasic(id: number, userCountryId: number): Promise<Clients | null>;
     update(id: number, updateClientDto: Partial<CreateClientDto>, userCountryId: number): Promise<Clients | null>;

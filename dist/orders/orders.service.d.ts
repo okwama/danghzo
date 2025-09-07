@@ -7,7 +7,10 @@ export declare class OrdersService {
     private orderItemRepository;
     private dataSource;
     constructor(orderRepository: Repository<Order>, orderItemRepository: Repository<OrderItem>, dataSource: DataSource);
-    create(createOrderDto: CreateOrderDto, salesrepId?: number): Promise<Order>;
+    create(createOrderDto: CreateOrderDto, salesrepId?: number, salesrepName?: string): Promise<{
+        order: Order;
+        creditLimitWarning: any;
+    }>;
     private generateSoNumber;
     findAll(salesrepId?: number, filters?: {
         status?: string;

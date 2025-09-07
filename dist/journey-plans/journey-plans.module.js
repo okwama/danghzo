@@ -14,6 +14,7 @@ const journey_plans_service_1 = require("./journey-plans.service");
 const journey_plan_entity_1 = require("./entities/journey-plan.entity");
 const clients_entity_1 = require("../entities/clients.entity");
 const sales_rep_entity_1 = require("../entities/sales-rep.entity");
+const cloudinary_service_1 = require("../cloudinary/cloudinary.service");
 let JourneyPlansModule = class JourneyPlansModule {
 };
 exports.JourneyPlansModule = JourneyPlansModule;
@@ -21,7 +22,7 @@ exports.JourneyPlansModule = JourneyPlansModule = __decorate([
     (0, common_1.Module)({
         imports: [typeorm_1.TypeOrmModule.forFeature([journey_plan_entity_1.JourneyPlan, clients_entity_1.Clients, sales_rep_entity_1.SalesRep])],
         controllers: [journey_plans_controller_1.JourneyPlansController],
-        providers: [journey_plans_service_1.JourneyPlansService],
+        providers: [journey_plans_service_1.JourneyPlansService, cloudinary_service_1.CloudinaryService],
         exports: [journey_plans_service_1.JourneyPlansService],
     })
 ], JourneyPlansModule);

@@ -22,55 +22,114 @@ let DatabaseHealthService = DatabaseHealthService_1 = class DatabaseHealthServic
         this.dataSource = dataSource;
         this.logger = new common_1.Logger(DatabaseHealthService_1.name);
         this.reconnectAttempts = 0;
-        this.maxReconnectAttempts = 10;
-        this.reconnectDelay = 5000;
+        this.maxReconnectAttempts = 15;
+        this.reconnectDelay = 3000;
+        this.isReconnecting = false;
+        this.lastHealthCheck = Date.now();
+        this.consecutiveFailures = 0;
+        this.maxConsecutiveFailures = 5;
     }
     async onModuleInit() {
         this.startHealthCheck();
+        this.logger.log('Database health monitoring started');
     }
     startHealthCheck() {
         this.healthCheckInterval = setInterval(async () => {
             await this.checkDatabaseHealth();
-        }, 30000);
+        }, 20000);
     }
     async checkDatabaseHealth() {
+        if (this.isReconnecting) {
+            this.logger.debug('Skipping health check - reconnection in progress');
+            return;
+        }
         try {
-            await this.dataSource.query('SELECT 1');
-            this.reconnectAttempts = 0;
-            this.logger.debug('Database connection is healthy');
+            const queryRunner = this.dataSource.createQueryRunner();
+            try {
+                await Promise.race([
+                    queryRunner.query('SELECT 1 as health_check'),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timeout')), 10000))
+                ]);
+                this.consecutiveFailures = 0;
+                this.reconnectAttempts = 0;
+                this.lastHealthCheck = Date.now();
+                this.logger.debug('Database connection is healthy');
+            }
+            finally {
+                await queryRunner.release();
+            }
         }
         catch (error) {
-            this.logger.error('Database health check failed:', error.message);
-            await this.handleConnectionError();
+            this.consecutiveFailures++;
+            this.logger.warn(`Database health check failed (${this.consecutiveFailures}/${this.maxConsecutiveFailures}): ${error.message}`);
+            if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+                await this.handleConnectionError();
+            }
         }
     }
     async handleConnectionError() {
+        if (this.isReconnecting) {
+            this.logger.debug('Reconnection already in progress, skipping');
+            return;
+        }
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             this.logger.error('Max reconnection attempts reached. Stopping health checks.');
             clearInterval(this.healthCheckInterval);
             return;
         }
+        this.isReconnecting = true;
         this.reconnectAttempts++;
         this.logger.warn(`Attempting to reconnect to database (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         try {
             if (this.dataSource.isInitialized) {
+                this.logger.debug('Closing existing database connections...');
                 await this.dataSource.destroy();
             }
             await new Promise(resolve => setTimeout(resolve, this.reconnectDelay));
-            await this.dataSource.initialize();
+            await this.retryConnection();
             this.logger.log('Database reconnection successful');
             this.reconnectAttempts = 0;
+            this.consecutiveFailures = 0;
         }
         catch (error) {
             this.logger.error(`Reconnection attempt ${this.reconnectAttempts} failed:`, error.message);
-            const backoffDelay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
+            const backoffDelay = Math.min(this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1) + Math.random() * 1000, 30000);
+            this.logger.debug(`Waiting ${Math.round(backoffDelay)}ms before next reconnection attempt`);
             await new Promise(resolve => setTimeout(resolve, backoffDelay));
+        }
+        finally {
+            this.isReconnecting = false;
+        }
+    }
+    async retryConnection(maxRetries = 3) {
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                this.logger.debug(`Initializing database connection (attempt ${attempt}/${maxRetries})`);
+                await this.dataSource.initialize();
+                return;
+            }
+            catch (error) {
+                this.logger.warn(`Connection initialization attempt ${attempt} failed: ${error.message}`);
+                if (attempt === maxRetries) {
+                    throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+            }
         }
     }
     async isHealthy() {
         try {
-            await this.dataSource.query('SELECT 1');
-            return true;
+            const queryRunner = this.dataSource.createQueryRunner();
+            try {
+                await Promise.race([
+                    queryRunner.query('SELECT 1 as health_check'),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Health check timeout')), 5000))
+                ]);
+                return true;
+            }
+            finally {
+                await queryRunner.release();
+            }
         }
         catch (error) {
             this.logger.error('Database health check failed:', error.message);
@@ -83,11 +142,22 @@ let DatabaseHealthService = DatabaseHealthService_1 = class DatabaseHealthServic
             isConnected: this.dataSource.isInitialized,
             reconnectAttempts: this.reconnectAttempts,
             maxReconnectAttempts: this.maxReconnectAttempts,
+            consecutiveFailures: this.consecutiveFailures,
+            lastHealthCheck: this.lastHealthCheck,
+            isReconnecting: this.isReconnecting,
+            timeSinceLastHealthCheck: Date.now() - this.lastHealthCheck,
         };
+    }
+    async forceReconnect() {
+        this.logger.log('Force reconnection requested');
+        this.consecutiveFailures = this.maxConsecutiveFailures;
+        await this.handleConnectionError();
+        return this.dataSource.isInitialized;
     }
     onModuleDestroy() {
         if (this.healthCheckInterval) {
             clearInterval(this.healthCheckInterval);
+            this.logger.log('Database health monitoring stopped');
         }
     }
 };

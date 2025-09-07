@@ -34,7 +34,7 @@ export class TasksController {
     return this.tasksService.update(+id, { status: body.status });
   }
 
-  @Post(':id/complete')
+  @Patch(':id/complete')
   async completeTask(@Param('id') id: string) {
     return this.tasksService.completeTask(+id);
   }

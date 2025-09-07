@@ -21,6 +21,7 @@ export declare class Client {
     status: number;
     clientType: number;
     outletAccount: number;
+    creditLimit: number;
     countryId: number;
     addedBy: number;
     addedByUser: SalesRep;

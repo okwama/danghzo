@@ -24,8 +24,9 @@ export declare class ClockInOutController {
     getTodaySessions(userId: string): Promise<{
         sessions: any[];
     }>;
-    getClockHistory(userId: string, startDate?: string, endDate?: string): Promise<{
+    getUserSessions(userId: string, period?: 'today' | 'week' | 'month' | 'custom', startDate?: string, endDate?: string, limit?: string): Promise<{
         sessions: any[];
+        statistics: any;
     }>;
     triggerAutoClockOut(): Promise<void>;
     getActiveSessionsCount(): Promise<{

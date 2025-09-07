@@ -4,6 +4,7 @@ import { Repository, DataSource } from 'typeorm';
 import { Order } from './entities/order.entity';
 import { OrderItem } from './entities/order-item.entity';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { Clients } from '../entities/clients.entity';
 
 @Injectable()
 export class OrdersService {
@@ -15,7 +16,7 @@ export class OrdersService {
     private dataSource: DataSource,
   ) {}
 
-  async create(createOrderDto: CreateOrderDto, salesrepId?: number): Promise<Order> {
+  async create(createOrderDto: CreateOrderDto, salesrepId?: number, salesrepName?: string): Promise<{ order: Order; creditLimitWarning: any }> {
     let retryCount = 0;
     const maxRetries = 3;
 
@@ -25,6 +26,16 @@ export class OrdersService {
       await queryRunner.startTransaction();
 
       try {
+        // Check credit limit before creating order
+        const client = await queryRunner.manager.findOne(Clients, {
+          where: { id: createOrderDto.clientId },
+          select: ['id', 'name', 'balance', 'credit_limit']
+        });
+
+        if (!client) {
+          throw new Error('Client not found');
+        }
+
         // Generate SO number if not provided
         const soNumber = createOrderDto.soNumber || await this.generateSoNumber();
         
@@ -51,6 +62,23 @@ export class OrdersService {
           netPrice += itemTotal; // Net price is the same as total for tax-inclusive
         }
 
+        // Check credit limit
+        const currentBalance = Number(client.balance) || 0;
+        const creditLimit = Number(client.credit_limit) || 0;
+        const newBalance = currentBalance + totalAmount;
+        
+        let creditLimitWarning = null;
+        if (newBalance > creditLimit && creditLimit > 0) {
+          creditLimitWarning = {
+            currentBalance,
+            creditLimit,
+            orderAmount: totalAmount,
+            newBalance,
+            exceedsBy: newBalance - creditLimit
+          };
+          console.log(`⚠️ Credit limit exceeded for client ${client.name}: Current: ${currentBalance}, Limit: ${creditLimit}, New Balance: ${newBalance}`);
+        }
+
         // Create the order
         const orderData = {
           soNumber: soNumber,
@@ -62,15 +90,15 @@ export class OrdersService {
           totalAmount: totalAmount,
           netPrice: netPrice,
           notes: createOrderDto.comment || createOrderDto.notes,
-          createdBy: null, // Not set for sales rep orders
-          salesrep: salesrepId, // Set from JWT token
+          createdBy: salesrepName, // Sales rep name who created the order
+          salesrep: salesrepId, // Sales rep ID assigned to this client
           riderId: createOrderDto.riderId,
           status: createOrderDto.status || 'draft',
           myStatus: createOrderDto.myStatus || 0,
         };
 
-        const order = this.orderRepository.create(orderData);
-        const savedOrder = await queryRunner.manager.save(order);
+        const newOrder = this.orderRepository.create(orderData);
+        const savedOrder = await queryRunner.manager.save(newOrder);
 
         // Create order items
         for (const itemDto of createOrderDto.orderItems) {
@@ -99,11 +127,17 @@ export class OrdersService {
         }
 
         await queryRunner.commitTransaction();
+        await queryRunner.release();
 
-        // Return the order with items
-        return this.findOne(savedOrder.id);
+        // Return the order with items and credit limit warning
+        const createdOrder = await this.findOne(savedOrder.id);
+        return {
+          order: createdOrder,
+          creditLimitWarning
+        };
       } catch (error) {
         await queryRunner.rollbackTransaction();
+        await queryRunner.release();
         
         // Check if it's a duplicate key error
         if (error.message && error.message.includes('Duplicate entry') && error.message.includes('so_number')) {
@@ -117,8 +151,6 @@ export class OrdersService {
         }
         
         throw error;
-      } finally {
-        await queryRunner.release();
       }
     }
     
@@ -227,7 +259,6 @@ export class OrdersService {
 
   async findOne(id: number, salesrepId?: number): Promise<Order | null> {
     const query = this.orderRepository.createQueryBuilder('order')
-      .leftJoinAndSelect('order.user', 'user')
       .leftJoinAndSelect('order.client', 'client')
       .leftJoinAndSelect('order.orderItems', 'orderItems')
       .leftJoinAndSelect('orderItems.product', 'product')

@@ -13,6 +13,7 @@ exports.SalesRep = void 0;
 const typeorm_1 = require("typeorm");
 const journey_plan_entity_1 = require("../journey-plans/entities/journey-plan.entity");
 const login_history_entity_1 = require("./login-history.entity");
+const client_assignment_entity_1 = require("./client-assignment.entity");
 const bcrypt = require("bcryptjs");
 let SalesRep = class SalesRep {
     async validatePassword(password) {
@@ -136,6 +137,10 @@ __decorate([
     (0, typeorm_1.OneToMany)(() => login_history_entity_1.LoginHistory, loginHistory => loginHistory.SalesRep),
     __metadata("design:type", Array)
 ], SalesRep.prototype, "LoginHistory", void 0);
+__decorate([
+    (0, typeorm_1.OneToMany)(() => client_assignment_entity_1.ClientAssignment, assignment => assignment.salesRep),
+    __metadata("design:type", Array)
+], SalesRep.prototype, "clientAssignments", void 0);
 exports.SalesRep = SalesRep = __decorate([
     (0, typeorm_1.Entity)('SalesRep'),
     (0, typeorm_1.Index)('idx_status_role', ['status', 'role']),

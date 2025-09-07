@@ -71,6 +71,9 @@ export class Client {
   @Column({ name: 'outlet_account', type: 'int', nullable: true })
   outletAccount: number;
 
+  @Column({ name: 'credit_limit', type: 'decimal', precision: 11, scale: 2, nullable: true })
+  creditLimit: number;
+
   @Column({ name: 'countryId', type: 'int' })
   countryId: number;
 

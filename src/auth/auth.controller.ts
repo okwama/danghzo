@@ -39,9 +39,18 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req) {
+  async getProfile(@Request() req) {
     this.logger.log(`👤 Profile request for user: ${req.user?.name || 'Unknown'}`);
-    return req.user;
+    
+    // Get full user data from database instead of just JWT payload
+    try {
+      const fullUser = await this.authService.validateToken(req.headers.authorization?.replace('Bearer ', ''));
+      this.logger.log(`✅ Full user data retrieved: ${fullUser.name}`);
+      return fullUser;
+    } catch (error) {
+      this.logger.error('❌ Error retrieving full user data', error.stack);
+      throw new UnauthorizedException('Failed to retrieve user profile');
+    }
   }
 
   @UseGuards(JwtAuthGuard)
@@ -49,5 +58,19 @@ export class AuthController {
   logout() {
     this.logger.log('🚪 Logout request received');
     return { message: 'Logged out successfully' };
+  }
+
+  @Post('refresh')
+  async refreshToken(@Body() body: { refreshToken: string }) {
+    this.logger.log('🔄 Refresh token request received');
+    
+    try {
+      const result = await this.authService.refreshToken(body.refreshToken);
+      this.logger.log('✅ Refresh token successful');
+      return result;
+    } catch (error) {
+      this.logger.error('❌ Refresh token failed', error.stack);
+      throw error;
+    }
   }
 } 

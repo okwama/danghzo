@@ -18,13 +18,15 @@ export class ClientsController {
   @Get()
   async findAll(@Request() req) {
     const userCountryId = req.user.countryId;
-    return this.clientsService.findAll(userCountryId);
+    const userId = req.user.id;
+    return this.clientsService.findAll(userCountryId, userId);
   }
 
   @Get('basic')
   async findAllBasic(@Request() req) {
     const userCountryId = req.user.countryId;
-    return this.clientsService.findAll(userCountryId); // Uses select fields
+    const userId = req.user.id;
+    return this.clientsService.findAll(userCountryId, userId); // Uses select fields
   }
 
   @Get('search')

@@ -11,16 +11,23 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const clients_controller_1 = require("./clients.controller");
 const outlets_controller_1 = require("./outlets.controller");
+const clients_cached_controller_1 = require("./clients-cached.controller");
 const clients_service_1 = require("./clients.service");
 const clients_entity_1 = require("../entities/clients.entity");
+const client_assignment_entity_1 = require("../entities/client-assignment.entity");
+const database_resilience_service_1 = require("../config/database-resilience.service");
+const cache_module_1 = require("../cache/cache.module");
 let ClientsModule = class ClientsModule {
 };
 exports.ClientsModule = ClientsModule;
 exports.ClientsModule = ClientsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([clients_entity_1.Clients])],
-        controllers: [clients_controller_1.ClientsController, outlets_controller_1.OutletsController],
-        providers: [clients_service_1.ClientsService],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([clients_entity_1.Clients, client_assignment_entity_1.ClientAssignment]),
+            cache_module_1.AppCacheModule,
+        ],
+        controllers: [clients_controller_1.ClientsController, outlets_controller_1.OutletsController, clients_cached_controller_1.ClientsCachedController],
+        providers: [clients_service_1.ClientsService, database_resilience_service_1.DatabaseResilienceService],
         exports: [clients_service_1.ClientsService],
     })
 ], ClientsModule);

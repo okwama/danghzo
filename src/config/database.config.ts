@@ -27,48 +27,14 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
   const useLocalDb = configService.get<string>('USE_LOCAL_DB', 'false') === 'true';
   const isProduction = configService.get<string>('NODE_ENV', 'development') === 'production';
 
-  // Force MySQL in production
-  if (isProduction) {
-    console.log('🚀 Production environment - using MySQL database');
-    return {
-      type: 'mysql',
-      host: configService.get<string>('DB_HOST'),
-      port: configService.get<number>('DB_PORT', 3306),
-      username: configService.get<string>('DB_USERNAME'),
-      password: configService.get<string>('DB_PASSWORD'),
-      database: configService.get<string>('DB_DATABASE'),
-      entities: [
-        SalesRep, Clients, Product, JourneyPlan, LoginHistory, UpliftSale, UpliftSaleItem,
-        Task, Leave, Store, StoreInventory, Category, CategoryPriceOption, Order, OrderItem, Users, Notice, LeaveType,
-        FeedbackReport, ProductReport, VisibilityReport, SalesClientPayment,
-      ],
-      synchronize: false,
-      logging: configService.get<boolean>('DB_LOGGING', false),
-      charset: 'utf8mb4',
-      ssl: configService.get<boolean>('DB_SSL', false),
-      extra: {
-        connectionLimit: 20,
-        charset: 'utf8mb4',
-        multipleStatements: true,
-        dateStrings: true,
-      },
-      retryAttempts: 5,
-      retryDelay: 2000,
-      connectTimeout: 60000,
-      keepConnectionAlive: true,
-      autoLoadEntities: true,
-    };
-  }
-
-  // Development with MySQL
-  console.log('🔧 Development environment - using MySQL database');
-  return {
-    type: 'mysql',
-    host: configService.get<string>('DB_HOST', 'localhost'),
+  // Enhanced database configuration with better timeout handling
+  const baseConfig = {
+    type: 'mysql' as const,
+    host: configService.get<string>('DB_HOST'),
     port: configService.get<number>('DB_PORT', 3306),
-    username: configService.get<string>('DB_USERNAME', 'root'),
-    password: configService.get<string>('DB_PASSWORD', ''),
-    database: configService.get<string>('DB_DATABASE', 'citlogis_finance'),
+    username: configService.get<string>('DB_USERNAME'),
+    password: configService.get<string>('DB_PASSWORD'),
+    database: configService.get<string>('DB_DATABASE'),
     entities: [
       SalesRep, Clients, Product, JourneyPlan, LoginHistory, UpliftSale, UpliftSaleItem,
       Task, Leave, Store, StoreInventory, Category, CategoryPriceOption, Order, OrderItem, Users, Notice, LeaveType,
@@ -78,16 +44,59 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     logging: configService.get<boolean>('DB_LOGGING', false),
     charset: 'utf8mb4',
     ssl: configService.get<boolean>('DB_SSL', false),
+    // Enhanced connection settings
     extra: {
-      connectionLimit: 20,
+      connectionLimit: 25, // Increased connection limit
       charset: 'utf8mb4',
       multipleStatements: true,
       dateStrings: true,
+      // MySQL2 specific timeout settings
+      acquireTimeout: 60000, // 60 seconds to acquire connection
+      timeout: 60000, // 60 seconds query timeout
+      reconnect: true, // Enable automatic reconnection
+      // Connection pool settings
+      waitForConnections: true,
+      queueLimit: 0, // No limit on queue
+      // Keep alive settings
+      keepAliveInitialDelay: 10000, // 10 seconds
+      enableKeepAlive: true,
     },
-    retryAttempts: 5,
-    retryDelay: 2000,
-    connectTimeout: 60000,
+    // TypeORM retry settings
+    retryAttempts: 10, // Increased retry attempts
+    retryDelay: 3000, // 3 seconds between retries
+    connectTimeout: 60000, // 60 seconds connection timeout
+    acquireTimeout: 60000, // 60 seconds acquire timeout
+    timeout: 60000, // 60 seconds query timeout
     keepConnectionAlive: true,
     autoLoadEntities: true,
+    // Additional resilience settings
+    maxQueryExecutionTime: 30000, // 30 seconds max query execution
+    cache: {
+      duration: 30000, // 30 seconds cache duration
+    },
+  };
+
+  // Production configuration
+  if (isProduction) {
+    console.log('🚀 Production environment - using MySQL database with enhanced resilience');
+    return {
+      ...baseConfig,
+      host: configService.get<string>('DB_HOST'),
+      port: configService.get<number>('DB_PORT', 3306),
+      username: configService.get<string>('DB_USERNAME'),
+      password: configService.get<string>('DB_PASSWORD'),
+      database: configService.get<string>('DB_DATABASE'),
+    };
+  }
+
+  // Development configuration
+  console.log('🔧 Development environment - using MySQL database with enhanced resilience');
+  return {
+    ...baseConfig,
+    host: configService.get<string>('DB_HOST', 'localhost'),
+    port: configService.get<number>('DB_PORT', 3306),
+    username: configService.get<string>('DB_USERNAME', 'root'),
+    password: configService.get<string>('DB_PASSWORD', ''),
+    database: configService.get<string>('DB_DATABASE', 'impulsep_moonsun'),
   };
 }; 

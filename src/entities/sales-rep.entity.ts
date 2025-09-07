@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { JourneyPlan } from '../journey-plans/entities/journey-plan.entity';
 import { LoginHistory } from './login-history.entity';
+import { ClientAssignment } from './client-assignment.entity';
 import * as bcrypt from 'bcryptjs';
 
 @Entity('SalesRep')
@@ -95,6 +96,9 @@ export class SalesRep {
 
   @OneToMany(() => LoginHistory, loginHistory => loginHistory.SalesRep)
   LoginHistory: LoginHistory[];
+
+  @OneToMany(() => ClientAssignment, assignment => assignment.salesRep)
+  clientAssignments: ClientAssignment[];
 
   async validatePassword(password: string): Promise<boolean> {
     return bcrypt.compare(password, this.password);

@@ -1,5 +1,6 @@
 import { JourneyPlan } from '../journey-plans/entities/journey-plan.entity';
 import { LoginHistory } from './login-history.entity';
+import { ClientAssignment } from './client-assignment.entity';
 export declare class SalesRep {
     id: number;
     name: string;
@@ -30,5 +31,6 @@ export declare class SalesRep {
     managerId: number;
     journeyPlans: JourneyPlan[];
     LoginHistory: LoginHistory[];
+    clientAssignments: ClientAssignment[];
     validatePassword(password: string): Promise<boolean>;
 }

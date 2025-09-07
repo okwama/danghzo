@@ -83,7 +83,7 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], TasksController.prototype, "updateStatus", null);
 __decorate([
-    (0, common_1.Post)(':id/complete'),
+    (0, common_1.Patch)(':id/complete'),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),

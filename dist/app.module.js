@@ -16,6 +16,8 @@ const platform_express_1 = require("@nestjs/platform-express");
 const schedule_1 = require("@nestjs/schedule");
 const database_config_1 = require("./config/database.config");
 const database_health_service_1 = require("./config/database-health.service");
+const database_resilience_service_1 = require("./config/database-resilience.service");
+const database_monitor_controller_1 = require("./config/database-monitor.controller");
 const auth_module_1 = require("./auth/auth.module");
 const users_module_1 = require("./users/users.module");
 const profile_module_1 = require("./profile/profile.module");
@@ -37,6 +39,7 @@ const reports_module_1 = require("./reports/reports.module");
 const routes_module_1 = require("./routes/routes.module");
 const version_module_1 = require("./version/version.module");
 const payments_module_1 = require("./payments/payments.module");
+const cache_module_1 = require("./cache/cache.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -65,6 +68,7 @@ exports.AppModule = AppModule = __decorate([
             }),
             schedule_1.ScheduleModule.forRoot(),
             passport_1.PassportModule,
+            cache_module_1.AppCacheModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
             profile_module_1.ProfileModule,
@@ -87,7 +91,8 @@ exports.AppModule = AppModule = __decorate([
             version_module_1.VersionModule,
             payments_module_1.PaymentsModule,
         ],
-        providers: [database_health_service_1.DatabaseHealthService],
+        controllers: [database_monitor_controller_1.DatabaseMonitorController],
+        providers: [database_health_service_1.DatabaseHealthService, database_resilience_service_1.DatabaseResilienceService],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

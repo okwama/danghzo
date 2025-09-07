@@ -28,11 +28,13 @@ let ClientsController = class ClientsController {
     }
     async findAll(req) {
         const userCountryId = req.user.countryId;
-        return this.clientsService.findAll(userCountryId);
+        const userId = req.user.id;
+        return this.clientsService.findAll(userCountryId, userId);
     }
     async findAllBasic(req) {
         const userCountryId = req.user.countryId;
-        return this.clientsService.findAll(userCountryId);
+        const userId = req.user.id;
+        return this.clientsService.findAll(userCountryId, userId);
     }
     async search(searchDto, req) {
         const userCountryId = req.user.countryId;

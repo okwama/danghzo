@@ -34,4 +34,7 @@ export declare class JourneyPlansController {
         checkoutLatitude?: number;
         checkoutLongitude?: number;
     }): Promise<import("./entities/journey-plan.entity").JourneyPlan>;
+    uploadCheckInPhoto(id: string, file: Express.Multer.File, req: Request): Promise<{
+        photoUrl: string;
+    }>;
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards, Request } from '@nestjs/common';
 import { ProductsService } from './products.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -24,17 +24,20 @@ export class ProductsController {
     }
   }
 
-  @Get('country/:countryId')
+  @Get('country')
   @UseGuards(JwtAuthGuard)
-  async findProductsByCountry(@Param('countryId') countryId: string) {
+  async findProductsByCountry(@Request() req) {
     try {
-      console.log(`🌍 Products API: GET /products/country/${countryId} called`);
-      const userCountryId = parseInt(countryId);
+      console.log('🌍 Products API: GET /products/country called');
       
-      if (isNaN(userCountryId)) {
-        throw new Error('Invalid country ID');
+      // Get country from JWT token
+      const userCountryId = req.user?.countryId;
+      
+      if (!userCountryId) {
+        throw new Error('Country ID not found in user token');
       }
 
+      console.log(`🌍 Products API: User country from JWT: ${userCountryId}`);
       const products = await this.productsService.findProductsByCountry(userCountryId);
       console.log(`🌍 Products API: Returning ${products.length} products for country ${userCountryId}`);
       return products;

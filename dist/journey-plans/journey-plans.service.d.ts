@@ -4,6 +4,7 @@ import { Clients } from '../entities/clients.entity';
 import { SalesRep } from '../entities/sales-rep.entity';
 import { CreateJourneyPlanDto } from './dto/create-journey-plan.dto';
 import { UpdateJourneyPlanDto } from './dto/update-journey-plan.dto';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
 interface FindAllOptions {
     page: number;
     limit: number;
@@ -26,7 +27,9 @@ export declare class JourneyPlansService {
     private clientsRepository;
     private salesRepRepository;
     private dataSource;
-    constructor(journeyPlanRepository: Repository<JourneyPlan>, clientsRepository: Repository<Clients>, salesRepRepository: Repository<SalesRep>, dataSource: DataSource);
+    private cloudinaryService;
+    private readonly logger;
+    constructor(journeyPlanRepository: Repository<JourneyPlan>, clientsRepository: Repository<Clients>, salesRepRepository: Repository<SalesRep>, dataSource: DataSource, cloudinaryService: CloudinaryService);
     private getFallbackCoordinates;
     private ensureClientCoordinates;
     create(createJourneyPlanDto: CreateJourneyPlanDto, userId?: number): Promise<JourneyPlan>;
@@ -63,6 +66,7 @@ export declare class JourneyPlansService {
     }>;
     findOne(id: number): Promise<JourneyPlan | null>;
     update(id: number, updateJourneyPlanDto: UpdateJourneyPlanDto): Promise<JourneyPlan | null>;
+    uploadCheckInPhoto(journeyPlanId: number, file: Express.Multer.File): Promise<string>;
     remove(id: number): Promise<void>;
     checkout(id: number, checkoutDto: {
         checkoutTime?: string;

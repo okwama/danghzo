@@ -29,13 +29,15 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             const { userId, clientTime } = clockInDto;
             this.logger.log(`🟢 Clock In attempt for user ${userId} at ${clientTime}`);
             await this.cleanupMultipleActiveSessions(userId);
-            const activeSession = await this.loginHistoryRepository.findOne({
-                where: {
-                    userId,
-                    status: 1,
-                },
-                order: { sessionStart: 'DESC' },
-            });
+            const today = new Date();
+            const todayStr = today.toISOString().slice(0, 10);
+            const activeSession = await this.loginHistoryRepository
+                .createQueryBuilder('session')
+                .where('session.userId = :userId', { userId })
+                .andWhere('session.status = :status', { status: 1 })
+                .andWhere('DATE(session.sessionStart) = :today', { today: todayStr })
+                .orderBy('session.sessionStart', 'DESC')
+                .getOne();
             if (activeSession) {
                 this.logger.log(`✅ User ${userId} has active session, continuing existing session`);
                 return {
@@ -86,13 +88,15 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
         try {
             const { userId, clientTime } = clockOutDto;
             this.logger.log(`🔴 Clock Out attempt for user ${userId} at ${clientTime}`);
-            const activeSession = await this.loginHistoryRepository.findOne({
-                where: {
-                    userId,
-                    status: 1,
-                },
-                order: { sessionStart: 'DESC' },
-            });
+            const today = new Date();
+            const todayStr = today.toISOString().slice(0, 10);
+            const activeSession = await this.loginHistoryRepository
+                .createQueryBuilder('session')
+                .where('session.userId = :userId', { userId })
+                .andWhere('session.status = :status', { status: 1 })
+                .andWhere('DATE(session.sessionStart) = :today', { today: todayStr })
+                .orderBy('session.sessionStart', 'DESC')
+                .getOne();
             if (!activeSession) {
                 this.logger.warn(`⚠️ User ${userId} has no active session to clock out`);
                 return {
@@ -133,20 +137,23 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
     }
     async getCurrentStatus(userId) {
         try {
-            await this.cleanupMultipleActiveSessions(userId);
-            const activeSession = await this.loginHistoryRepository.findOne({
-                where: {
-                    userId,
-                    status: 1,
-                },
-                order: { sessionStart: 'DESC' },
-            });
+            const today = new Date();
+            const todayStr = today.toISOString().slice(0, 10);
+            const activeSession = await this.loginHistoryRepository
+                .createQueryBuilder('session')
+                .where('session.userId = :userId', { userId })
+                .andWhere('session.status = :status', { status: 1 })
+                .andWhere('DATE(session.sessionStart) = :today', { today: todayStr })
+                .orderBy('session.sessionStart', 'DESC')
+                .getOne();
             if (!activeSession) {
+                this.logger.log(`📊 User ${userId} has no active session for today (${todayStr})`);
                 return { isClockedIn: false };
             }
             const startTime = new Date(activeSession.sessionStart);
             const now = new Date();
             const currentDuration = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
+            this.logger.log(`📊 User ${userId} has active session for today: ${activeSession.sessionStart}, duration: ${currentDuration} minutes`);
             return {
                 isClockedIn: true,
                 sessionStart: activeSession.sessionStart,
@@ -184,68 +191,209 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             return { sessions: [] };
         }
     }
-    async getClockHistory(userId, startDate, endDate) {
+    async getUserSessions(userId, period, startDate, endDate, limit = 50) {
         try {
-            this.logger.log(`📅 Getting clock history for user ${userId} from ${startDate} to ${endDate}`);
-            let query = this.loginHistoryRepository
+            this.logger.log(`📊 Getting user sessions for user ${userId}, period: ${period}`);
+            const { start, end } = this.calculateDateRange(period, startDate, endDate);
+            this.logger.log(`📅 Date range: ${start} to ${end}`);
+            this.logger.log(`🔍 SQL Query: SELECT * FROM LoginHistory WHERE userId = ${userId} AND DATE(sessionStart) BETWEEN '${start}' AND '${end}' ORDER BY sessionStart DESC LIMIT ${limit}`);
+            const sessions = await this.loginHistoryRepository
                 .createQueryBuilder('session')
                 .where('session.userId = :userId', { userId })
-                .orderBy('session.sessionStart', 'DESC');
-            if (startDate && endDate) {
-                query = query.andWhere('DATE(session.sessionStart) BETWEEN :startDate AND :endDate', {
-                    startDate,
-                    endDate,
-                });
+                .andWhere('DATE(session.sessionStart) >= :start', { start })
+                .andWhere('DATE(session.sessionStart) <= :end', { end })
+                .orderBy('session.sessionStart', 'DESC')
+                .limit(limit)
+                .getMany();
+            this.logger.log(`🔍 Raw sessions found: ${sessions.length}`);
+            if (sessions.length > 0) {
+                this.logger.log(`🔍 First session: ${JSON.stringify(sessions[0])}`);
+                this.logger.log(`🔍 Date range used: ${start} to ${end}`);
             }
-            else if (startDate) {
-                query = query.andWhere('DATE(session.sessionStart) >= :startDate', { startDate });
+            else {
+                this.logger.log(`🔍 No sessions found for user ${userId} in date range ${start} to ${end}`);
             }
-            else if (endDate) {
-                query = query.andWhere('DATE(session.sessionStart) <= :endDate', { endDate });
-            }
-            const sessions = await query.getMany();
+            const statistics = await this.calculateStatistics(sessions, period, start, end, userId);
             const formattedSessions = sessions.map(session => ({
                 id: session.id,
+                userId: session.userId,
                 sessionStart: session.sessionStart,
                 sessionEnd: session.sessionEnd,
                 duration: session.duration,
                 status: session.status,
                 timezone: session.timezone,
-                formattedStart: session.sessionStart ? this.formatDateTime(session.sessionStart) : null,
+                formattedStart: this.formatDateTime(session.sessionStart),
                 formattedEnd: session.sessionEnd ? this.formatDateTime(session.sessionEnd) : null,
                 formattedDuration: session.duration ? this.formatDuration(session.duration) : null,
                 isActive: session.status === 1,
+                statusText: session.status === 1 ? 'Active' : 'Completed',
             }));
-            this.logger.log(`✅ Found ${formattedSessions.length} clock sessions for user ${userId}`);
-            return { sessions: formattedSessions };
+            this.logger.log(`✅ Found ${formattedSessions.length} sessions for user ${userId}`);
+            return { sessions: formattedSessions, statistics };
         }
         catch (error) {
-            this.logger.error(`❌ Get clock history failed for user ${userId}: ${error.message}`);
-            return { sessions: [] };
+            this.logger.error(`❌ Get user sessions failed for user ${userId}: ${error.message}`);
+            return { sessions: [], statistics: this.getEmptyStatistics() };
         }
     }
-    async getClockSessionsWithProcedure(userId, startDate, endDate, limit = 50) {
+    calculateDateRange(period, startDate, endDate) {
+        const now = new Date();
+        switch (period) {
+            case 'today':
+                const today = now.toISOString().split('T')[0];
+                return { start: today, end: today };
+            case 'week':
+                const startOfWeek = new Date(now);
+                startOfWeek.setDate(now.getDate() - now.getDay() + 1);
+                const endOfWeek = new Date(startOfWeek);
+                endOfWeek.setDate(startOfWeek.getDate() + 6);
+                return {
+                    start: startOfWeek.toISOString().split('T')[0],
+                    end: endOfWeek.toISOString().split('T')[0]
+                };
+            case 'month':
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                return {
+                    start: startOfMonth.toISOString().split('T')[0],
+                    end: endOfMonth.toISOString().split('T')[0]
+                };
+            case 'custom':
+                if (!startDate || !endDate) {
+                    this.logger.warn('Custom period requires both startDate and endDate');
+                    const today = now.toISOString().split('T')[0];
+                    return { start: today, end: today };
+                }
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                    this.logger.warn('Invalid date format provided');
+                    const today = now.toISOString().split('T')[0];
+                    return { start: today, end: today };
+                }
+                if (start > end) {
+                    this.logger.warn('startDate is after endDate, swapping dates');
+                    return { start: endDate, end: startDate };
+                }
+                return { start: startDate, end: endDate };
+            default:
+                const thirtyDaysAgo = new Date(now);
+                thirtyDaysAgo.setDate(now.getDate() - 30);
+                return {
+                    start: thirtyDaysAgo.toISOString().split('T')[0],
+                    end: now.toISOString().split('T')[0]
+                };
+        }
+    }
+    async calculateStatistics(sessions, period, startDate, endDate, userId) {
+        const totalSessions = sessions.length;
+        const activeSessions = sessions.filter(s => s.status === 1).length;
+        const completedSessions = sessions.filter(s => s.status === 2).length;
+        const totalDuration = sessions
+            .filter(s => s.duration !== null)
+            .reduce((sum, session) => sum + session.duration, 0);
+        const totalHours = Math.round((totalDuration / 60) * 100) / 100;
+        const averageDuration = completedSessions > 0 ? Math.round(totalDuration / completedSessions) : 0;
+        const averageHours = Math.round((averageDuration / 60) * 100) / 100;
+        const monthlyAttendance = await this.calculateMonthlyAttendance(userId);
+        return {
+            totalSessions,
+            activeSessions,
+            completedSessions,
+            totalDuration,
+            totalHours,
+            averageDuration,
+            averageHours,
+            workedDays: monthlyAttendance.workedDays,
+            totalWorkingDays: monthlyAttendance.totalWorkingDays,
+            attendanceRatio: `${monthlyAttendance.workedDays}/${monthlyAttendance.totalWorkingDays}`,
+        };
+    }
+    async calculateMonthlyAttendance(userId) {
         try {
-            this.logger.log(`🚀 Using stored procedure for clock sessions - User: ${userId}`);
-            const result = await this.dataSource.query('CALL GetClockSessions(?, ?, ?, ?)', [userId, startDate || null, endDate || null, limit]);
-            if (result && result.length > 0) {
-                const sessions = result[0] || [];
-                this.logger.log(`✅ Stored procedure executed successfully`);
-                this.logger.log(`📊 Sessions found: ${sessions.length}`);
-                return { sessions };
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            const startStr = startOfMonth.toISOString().split('T')[0];
+            const endStr = endOfMonth.toISOString().split('T')[0];
+            const monthlySessions = await this.loginHistoryRepository
+                .createQueryBuilder('session')
+                .where('session.userId = :userId', { userId })
+                .andWhere('DATE(session.sessionStart) >= :start', { start: startStr })
+                .andWhere('DATE(session.sessionStart) <= :end', { end: endStr })
+                .getMany();
+            const workedDaysSet = new Set();
+            monthlySessions.forEach(session => {
+                const sessionDate = new Date(session.sessionStart);
+                const dayOfWeek = sessionDate.getDay();
+                if (dayOfWeek !== 0) {
+                    const dateStr = sessionDate.toISOString().split('T')[0];
+                    workedDaysSet.add(dateStr);
+                }
+            });
+            const workedDays = workedDaysSet.size;
+            let totalWorkingDays = 0;
+            const currentDate = new Date(startOfMonth);
+            while (currentDate <= endOfMonth) {
+                const dayOfWeek = currentDate.getDay();
+                if (dayOfWeek !== 0) {
+                    totalWorkingDays++;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
             }
-            else {
-                throw new Error('Invalid result from stored procedure');
-            }
+            this.logger.log(`📊 Monthly attendance: ${workedDays} worked days out of ${totalWorkingDays} total working days in ${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, '0')}`);
+            this.logger.log(`📊 Monthly sessions found: ${monthlySessions.length} sessions from ${startStr} to ${endStr}`);
+            return { workedDays, totalWorkingDays };
         }
         catch (error) {
-            this.logger.log(`⚠️ Stored procedure failed, falling back to service method: ${error.message}`);
-            return this.getClockSessionsFallback(userId, startDate, endDate);
+            this.logger.error(`❌ Failed to calculate monthly attendance: ${error.message}`);
+            return { workedDays: 0, totalWorkingDays: 0 };
         }
     }
-    async getClockSessionsFallback(userId, startDate, endDate) {
-        const history = await this.getClockHistory(userId, startDate, endDate);
-        return { sessions: history.sessions };
+    calculateAttendanceDays(sessions, period, startDate, endDate) {
+        try {
+            const workedDaysSet = new Set();
+            sessions.forEach(session => {
+                const sessionDate = new Date(session.sessionStart);
+                const dayOfWeek = sessionDate.getDay();
+                if (dayOfWeek !== 0) {
+                    const dateStr = sessionDate.toISOString().split('T')[0];
+                    workedDaysSet.add(dateStr);
+                }
+            });
+            const workedDays = workedDaysSet.size;
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            let totalWorkingDays = 0;
+            const currentDate = new Date(start);
+            while (currentDate <= end) {
+                const dayOfWeek = currentDate.getDay();
+                if (dayOfWeek !== 0) {
+                    totalWorkingDays++;
+                }
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            this.logger.log(`📊 Attendance calculation: ${workedDays} worked days out of ${totalWorkingDays} total working days`);
+            return { workedDays, totalWorkingDays };
+        }
+        catch (error) {
+            this.logger.error(`❌ Failed to calculate attendance days: ${error.message}`);
+            return { workedDays: 0, totalWorkingDays: 0 };
+        }
+    }
+    getEmptyStatistics() {
+        return {
+            totalSessions: 0,
+            activeSessions: 0,
+            completedSessions: 0,
+            totalDuration: 0,
+            totalHours: 0,
+            averageDuration: 0,
+            averageHours: 0,
+            workedDays: 0,
+            totalWorkingDays: 0,
+            attendanceRatio: '0/0',
+        };
     }
     formatDateTime(dateTimeStr) {
         try {

@@ -44,8 +44,8 @@ export class Order {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
-  @Column({ name: 'created_by', type: 'int', nullable: true })
-  createdBy: number;
+  @Column({ name: 'created_by', type: 'varchar', nullable: true })
+  createdBy: string;
 
   @Column({ name: 'salesrep', type: 'int', nullable: true })
   salesrep: number;
@@ -62,9 +62,7 @@ export class Order {
   @Column({ name: 'my_status', type: 'tinyint' })
   myStatus: number;
 
-  @ManyToOne(() => Users, { nullable: true })
-  @JoinColumn({ name: 'created_by' })
-  user: Users;
+  // Note: created_by is now a varchar field storing sales rep name, not a foreign key
 
   @ManyToOne(() => Clients)
   @JoinColumn({ name: 'client_id' })

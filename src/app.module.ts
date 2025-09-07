@@ -7,6 +7,8 @@ import { MulterModule } from '@nestjs/platform-express';
 import { ScheduleModule } from '@nestjs/schedule';
 import { getDatabaseConfig } from './config/database.config';
 import { DatabaseHealthService } from './config/database-health.service';
+import { DatabaseResilienceService } from './config/database-resilience.service';
+import { DatabaseMonitorController } from './config/database-monitor.controller';
 
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -29,6 +31,7 @@ import { ReportsModule } from './reports/reports.module';
 import { RoutesModule } from './routes/routes.module';
 import { VersionModule } from './version/version.module';
 import { PaymentsModule } from './payments/payments.module';
+import { AppCacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -54,6 +57,7 @@ import { PaymentsModule } from './payments/payments.module';
     }),
     ScheduleModule.forRoot(),
     PassportModule,
+    AppCacheModule,
     AuthModule,
     UsersModule,
     ProfileModule,
@@ -76,6 +80,7 @@ import { PaymentsModule } from './payments/payments.module';
     VersionModule,
     PaymentsModule,
   ],
-  providers: [DatabaseHealthService],
+  controllers: [DatabaseMonitorController],
+  providers: [DatabaseHealthService, DatabaseResilienceService],
 })
 export class AppModule {} 
