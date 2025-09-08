@@ -39,6 +39,7 @@ const reports_module_1 = require("./reports/reports.module");
 const routes_module_1 = require("./routes/routes.module");
 const version_module_1 = require("./version/version.module");
 const payments_module_1 = require("./payments/payments.module");
+const product_returns_module_1 = require("./product-returns/product-returns.module");
 const cache_module_1 = require("./cache/cache.module");
 const app_controller_1 = require("./app.controller");
 let AppModule = class AppModule {
@@ -91,6 +92,7 @@ exports.AppModule = AppModule = __decorate([
             routes_module_1.RoutesModule,
             version_module_1.VersionModule,
             payments_module_1.PaymentsModule,
+            product_returns_module_1.ProductReturnsModule,
         ],
         controllers: [app_controller_1.AppController, database_monitor_controller_1.DatabaseMonitorController],
         providers: [database_health_service_1.DatabaseHealthService, database_resilience_service_1.DatabaseResilienceService],

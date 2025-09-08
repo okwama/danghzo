@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 06, 2025 at 11:54 AM
+-- Generation Time: Sep 08, 2025 at 09:50 AM
 -- Server version: 10.6.23-MariaDB-cll-lve
 -- PHP Version: 8.4.10
 
@@ -320,6 +320,39 @@ CREATE TABLE `Clients` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `clients_prospects`
+--
+
+CREATE TABLE `clients_prospects` (
+  `id` int(11) NOT NULL,
+  `name` varchar(191) NOT NULL,
+  `address` varchar(191) DEFAULT NULL,
+  `latitude` double DEFAULT NULL,
+  `longitude` double DEFAULT NULL,
+  `balance` decimal(11,2) DEFAULT NULL,
+  `email` varchar(191) DEFAULT NULL,
+  `region_id` int(11) NOT NULL,
+  `region` varchar(191) NOT NULL,
+  `route_id` int(11) DEFAULT NULL,
+  `route_name` varchar(191) DEFAULT NULL,
+  `route_id_update` int(11) DEFAULT NULL,
+  `route_name_update` varchar(100) DEFAULT NULL,
+  `contact` varchar(191) NOT NULL,
+  `tax_pin` varchar(191) DEFAULT NULL,
+  `location` varchar(191) DEFAULT NULL,
+  `status` int(11) NOT NULL DEFAULT 1,
+  `client_type` int(11) DEFAULT NULL,
+  `outlet_account` int(11) DEFAULT NULL,
+  `payment_terms` int(11) NOT NULL,
+  `credit_limit` decimal(11,2) NOT NULL,
+  `countryId` int(11) NOT NULL,
+  `added_by` int(11) DEFAULT NULL,
+  `created_at` datetime(3) DEFAULT current_timestamp(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `client_ledger`
 --
 
@@ -481,7 +514,24 @@ CREATE TABLE `documents` (
   `file_url` varchar(255) NOT NULL,
   `category` varchar(100) NOT NULL,
   `description` text DEFAULT NULL,
-  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `uploaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `category_id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `document_categories`
+--
+
+CREATE TABLE `document_categories` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `color` varchar(7) DEFAULT '#3B82F6',
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -1057,6 +1107,21 @@ CREATE TABLE `my_assets` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `my_departments`
+--
+
+CREATE TABLE `my_departments` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `my_order`
 --
 
@@ -1296,6 +1361,27 @@ CREATE TABLE `products` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `image_url` varchar(200) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `product_returns`
+--
+
+CREATE TABLE `product_returns` (
+  `id` int(11) NOT NULL,
+  `salesrepId` int(11) NOT NULL,
+  `productId` int(11) NOT NULL,
+  `qty` int(11) NOT NULL,
+  `clientId` int(11) NOT NULL,
+  `date` date NOT NULL,
+  `status` enum('pending','approved','rejected','processed') DEFAULT 'pending',
+  `imageUrl` varchar(500) DEFAULT NULL,
+  `reason` text DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -1588,6 +1674,23 @@ CREATE TABLE `sales_rep_manager_assignments` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `sales_rep_targets`
+--
+
+CREATE TABLE `sales_rep_targets` (
+  `id` int(11) NOT NULL,
+  `sales_rep_id` int(11) NOT NULL,
+  `year` int(11) NOT NULL,
+  `month` int(11) NOT NULL,
+  `vapes_target` int(11) DEFAULT 0,
+  `pouches_target` int(11) DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `staff`
 --
 
@@ -1601,6 +1704,7 @@ CREATE TABLE `staff` (
   `phone_number` varchar(50) DEFAULT NULL,
   `password` varchar(255) NOT NULL,
   `department` varchar(100) DEFAULT NULL,
+  `department_id` int(11) DEFAULT NULL,
   `business_email` varchar(255) DEFAULT NULL,
   `department_email` varchar(255) DEFAULT NULL,
   `salary` decimal(11,2) DEFAULT NULL,
@@ -2073,6 +2177,14 @@ ALTER TABLE `Clients`
   ADD KEY `Clients_countryId_status_route_id_idx` (`countryId`,`status`,`route_id`);
 
 --
+-- Indexes for table `clients_prospects`
+--
+ALTER TABLE `clients_prospects`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `Clients_countryId_fkey` (`countryId`),
+  ADD KEY `Clients_countryId_status_route_id_idx` (`countryId`,`status`,`route_id`);
+
+--
 -- Indexes for table `client_ledger`
 --
 ALTER TABLE `client_ledger`
@@ -2140,7 +2252,15 @@ ALTER TABLE `distributors_targets`
 -- Indexes for table `documents`
 --
 ALTER TABLE `documents`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_document_category` (`category_id`);
+
+--
+-- Indexes for table `document_categories`
+--
+ALTER TABLE `document_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`);
 
 --
 -- Indexes for table `employee_contracts`
@@ -2412,6 +2532,13 @@ ALTER TABLE `my_assets`
   ADD KEY `idx_location` (`location`);
 
 --
+-- Indexes for table `my_departments`
+--
+ALTER TABLE `my_departments`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `name` (`name`);
+
+--
 -- Indexes for table `my_order`
 --
 ALTER TABLE `my_order`
@@ -2511,6 +2638,17 @@ ALTER TABLE `ProductReport`
 ALTER TABLE `products`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `product_code` (`product_code`);
+
+--
+-- Indexes for table `product_returns`
+--
+ALTER TABLE `product_returns`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_salesrep_id` (`salesrepId`),
+  ADD KEY `idx_product_id` (`productId`),
+  ADD KEY `idx_client_id` (`clientId`),
+  ADD KEY `idx_date` (`date`),
+  ADD KEY `idx_status` (`status`);
 
 --
 -- Indexes for table `purchase_orders`
@@ -2626,10 +2764,20 @@ ALTER TABLE `sales_rep_manager_assignments`
   ADD KEY `manager_id` (`manager_id`);
 
 --
+-- Indexes for table `sales_rep_targets`
+--
+ALTER TABLE `sales_rep_targets`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_sales_rep_year_month` (`sales_rep_id`,`year`,`month`),
+  ADD KEY `idx_sales_rep_targets_sales_rep_year` (`sales_rep_id`,`year`),
+  ADD KEY `idx_sales_rep_targets_year_month` (`year`,`month`);
+
+--
 -- Indexes for table `staff`
 --
 ALTER TABLE `staff`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `fk_staff_department` (`department_id`);
 
 --
 -- Indexes for table `staff_tasks`
@@ -2891,6 +3039,12 @@ ALTER TABLE `Clients`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `clients_prospects`
+--
+ALTER TABLE `clients_prospects`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `client_ledger`
 --
 ALTER TABLE `client_ledger`
@@ -2942,6 +3096,12 @@ ALTER TABLE `distributors_targets`
 -- AUTO_INCREMENT for table `documents`
 --
 ALTER TABLE `documents`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `document_categories`
+--
+ALTER TABLE `document_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -3119,6 +3279,12 @@ ALTER TABLE `my_assets`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `my_departments`
+--
+ALTER TABLE `my_departments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `my_order`
 --
 ALTER TABLE `my_order`
@@ -3194,6 +3360,12 @@ ALTER TABLE `ProductReport`
 -- AUTO_INCREMENT for table `products`
 --
 ALTER TABLE `products`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `product_returns`
+--
+ALTER TABLE `product_returns`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -3278,6 +3450,12 @@ ALTER TABLE `sales_rep_managers`
 -- AUTO_INCREMENT for table `sales_rep_manager_assignments`
 --
 ALTER TABLE `sales_rep_manager_assignments`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `sales_rep_targets`
+--
+ALTER TABLE `sales_rep_targets`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -3422,6 +3600,12 @@ ALTER TABLE `credit_note_items`
   ADD CONSTRAINT `credit_note_items_ibfk_3` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `documents`
+--
+ALTER TABLE `documents`
+  ADD CONSTRAINT `fk_document_category` FOREIGN KEY (`category_id`) REFERENCES `document_categories` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
 -- Constraints for table `expense_details`
 --
 ALTER TABLE `expense_details`
@@ -3474,6 +3658,26 @@ ALTER TABLE `merchandise_ledger`
 ALTER TABLE `merchandise_stock`
   ADD CONSTRAINT `merchandise_stock_ibfk_1` FOREIGN KEY (`merchandise_id`) REFERENCES `merchandise` (`id`),
   ADD CONSTRAINT `merchandise_stock_ibfk_2` FOREIGN KEY (`store_id`) REFERENCES `stores` (`id`);
+
+--
+-- Constraints for table `product_returns`
+--
+ALTER TABLE `product_returns`
+  ADD CONSTRAINT `fk_product_returns_client` FOREIGN KEY (`clientId`) REFERENCES `Clients` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_product_returns_product` FOREIGN KEY (`productId`) REFERENCES `Product` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_product_returns_salesrep` FOREIGN KEY (`salesrepId`) REFERENCES `SalesRep` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `sales_rep_targets`
+--
+ALTER TABLE `sales_rep_targets`
+  ADD CONSTRAINT `sales_rep_targets_ibfk_1` FOREIGN KEY (`sales_rep_id`) REFERENCES `SalesRep` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `staff`
+--
+ALTER TABLE `staff`
+  ADD CONSTRAINT `fk_staff_department` FOREIGN KEY (`department_id`) REFERENCES `my_departments` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `staff_tasks`

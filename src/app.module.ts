@@ -31,6 +31,7 @@ import { ReportsModule } from './reports/reports.module';
 import { RoutesModule } from './routes/routes.module';
 import { VersionModule } from './version/version.module';
 import { PaymentsModule } from './payments/payments.module';
+import { ProductReturnsModule } from './product-returns/product-returns.module';
 import { AppCacheModule } from './cache/cache.module';
 import { AppController } from './app.controller';
 
@@ -80,6 +81,7 @@ import { AppController } from './app.controller';
     RoutesModule,
     VersionModule,
     PaymentsModule,
+    ProductReturnsModule,
   ],
   controllers: [AppController, DatabaseMonitorController],
   providers: [DatabaseHealthService, DatabaseResilienceService],
