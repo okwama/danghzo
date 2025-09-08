@@ -28,8 +28,10 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
         try {
             const { userId, clientTime } = clockInDto;
             this.logger.log(`🟢 Clock In attempt for user ${userId} at ${clientTime}`);
-            const today = new Date();
-            const todayStr = today.toISOString().slice(0, 10);
+            const now = new Date();
+            const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+            const todayStr = nairobiTime.toISOString().slice(0, 10);
+            this.logger.log(`📅 Clock-in checking for today's session: ${todayStr} (Nairobi time)`);
             const activeSession = await this.loginHistoryRepository
                 .createQueryBuilder('session')
                 .where('session.userId = :userId', { userId })
@@ -65,10 +67,11 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                     sessionId: todaySession.id,
                 };
             }
+            const formattedTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
             const newSession = this.loginHistoryRepository.create({
                 userId,
                 status: 1,
-                sessionStart: clientTime,
+                sessionStart: formattedTime,
                 timezone: 'Africa/Nairobi',
                 duration: 0,
             });
@@ -112,7 +115,7 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             const endTime = new Date(clientTime);
             const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
             const validatedDuration = Math.min(durationMinutes, 480);
-            let finalEndTime = clientTime;
+            let finalEndTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
             if (durationMinutes > 480) {
                 const cappedEndTime = new Date(startTime);
                 cappedEndTime.setHours(18, 0, 0, 0);
@@ -141,8 +144,10 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
     }
     async getCurrentStatus(userId) {
         try {
-            const today = new Date();
-            const todayStr = today.toISOString().slice(0, 10);
+            const now = new Date();
+            const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+            const todayStr = nairobiTime.toISOString().slice(0, 10);
+            this.logger.log(`📅 Checking for today's session: ${todayStr} (Nairobi time)`);
             const activeSession = await this.loginHistoryRepository
                 .createQueryBuilder('session')
                 .where('session.userId = :userId', { userId })
@@ -155,8 +160,8 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                 return { isClockedIn: false };
             }
             const startTime = new Date(activeSession.sessionStart);
-            const now = new Date();
-            const currentDuration = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60));
+            const currentTime = new Date();
+            const currentDuration = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
             this.logger.log(`📊 User ${userId} has active session for today: ${activeSession.sessionStart}, duration: ${currentDuration} minutes`);
             return {
                 isClockedIn: true,

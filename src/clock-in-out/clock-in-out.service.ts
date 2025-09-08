@@ -111,9 +111,11 @@ export class ClockInOutService {
 
       this.logger.log(`🔴 Clock Out attempt for user ${userId} at ${clientTime}`);
 
-      // Find TODAY's active session
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10); // YYYY-MM-DD format
+      // Find TODAY's active session (using Africa/Nairobi timezone)
+      const now = new Date();
+      // Convert to Africa/Nairobi timezone (UTC+3) - same logic as clock-in
+      const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+      const todayStr = nairobiTime.toISOString().slice(0, 10); // YYYY-MM-DD format
       
       const activeSession = await this.loginHistoryRepository
         .createQueryBuilder('session')
@@ -188,7 +190,7 @@ export class ClockInOutService {
     try {
       // Check for TODAY's active session (using Africa/Nairobi timezone)
       const now = new Date();
-      // Convert to Africa/Nairobi timezone (UTC+3)
+      // Convert to Africa/Nairobi timezone (UTC+3) - same logic as clock-in/out
       const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
       const todayStr = nairobiTime.toISOString().slice(0, 10); // YYYY-MM-DD format
       

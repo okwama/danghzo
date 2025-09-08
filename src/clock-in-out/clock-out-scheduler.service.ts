@@ -13,19 +13,23 @@ export class ClockOutSchedulerService {
     private loginHistoryRepository: Repository<LoginHistory>,
   ) {}
 
-  @Cron('0 19 * * *') // 7:00 PM daily
+  @Cron('0 19 * * *', {
+    timeZone: 'Africa/Nairobi'
+  }) // 7:00 PM daily (Nairobi time)
   async autoClockOutAllUsers() {
-    this.logger.log('🕕 Running automatic clock-out job at 7:00 PM (showing 6:00 PM end time)');
+    this.logger.log('🕕 Running automatic clock-out job at 7:00 PM Nairobi time (setting 6:00 PM end time)');
     
     try {
-      // Get current date for 6 PM end time
-      const today = new Date();
-      const endTime = new Date(today);
-      endTime.setHours(18, 0, 0, 0); // 6:00 PM
+      // Get current date for 6 PM end time (Nairobi timezone)
+      const now = new Date();
+      // Convert to Africa/Nairobi timezone (UTC+3)
+      const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+      const endTime = new Date(nairobiTime);
+      endTime.setHours(18, 0, 0, 0); // 6:00 PM Nairobi time
       
       const formattedEndTime = endTime.toISOString().slice(0, 19).replace('T', ' ');
       
-      this.logger.log(`📅 Setting end time to: ${formattedEndTime}`);
+      this.logger.log(`📅 Setting end time to: ${formattedEndTime} (Nairobi time)`);
       
       // Find all active sessions
       const activeSessions = await this.loginHistoryRepository.find({
