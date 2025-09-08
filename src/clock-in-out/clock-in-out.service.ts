@@ -224,7 +224,7 @@ export class ClockInOutService {
         sessionId: activeSession.id,
         status: activeSession.status === 1 ? 'active' : 'completed',
         clockInTime: activeSession.sessionStart,
-        clockOutTime: activeSession.sessionEnd,
+        clockOutTime: null, // Active sessions don't have clock out time
         createdAt: activeSession.sessionStart,
       };
     } catch (error) {
