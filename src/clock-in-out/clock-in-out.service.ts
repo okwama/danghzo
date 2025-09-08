@@ -110,6 +110,7 @@ export class ClockInOutService {
       const { userId, clientTime } = clockOutDto;
 
       this.logger.log(`🔴 Clock Out attempt for user ${userId} at ${clientTime}`);
+      this.logger.log(`🔍 ClockOut: Looking for active session for user ${userId}`);
 
       // Find TODAY's active session (using Africa/Nairobi timezone)
       const now = new Date();
@@ -127,11 +128,14 @@ export class ClockInOutService {
 
       if (!activeSession) {
         this.logger.warn(`⚠️ User ${userId} has no active session to clock out`);
+        this.logger.log(`🔍 ClockOut: No active session found for user ${userId} on ${todayStr}`);
         return {
           success: false,
           message: 'You are not currently clocked in.',
         };
       }
+
+      this.logger.log(`✅ ClockOut: Found active session ${activeSession.id} for user ${userId}`);
 
       // Calculate duration from original start time to current end time
       const startTime = new Date(activeSession.sessionStart);
@@ -188,6 +192,7 @@ export class ClockInOutService {
     createdAt?: string;
   }> {
     try {
+      this.logger.log(`🔍 GetCurrentStatus called for user ${userId}`);
       // Check for TODAY's active session (using Africa/Nairobi timezone)
       const now = new Date();
       // Convert to Africa/Nairobi timezone (UTC+3) - same logic as clock-in/out
@@ -206,6 +211,7 @@ export class ClockInOutService {
 
       if (!activeSession) {
         this.logger.log(`📊 User ${userId} has no active session for today (${todayStr})`);
+        this.logger.log(`📊 Returning: { isClockedIn: false }`);
         return { isClockedIn: false };
       }
 
@@ -216,10 +222,10 @@ export class ClockInOutService {
 
       this.logger.log(`📊 User ${userId} has active session for today: ${activeSession.sessionStart}, duration: ${currentDuration} minutes`);
 
-      return {
+      const response = {
         isClockedIn: true,
         sessionStart: activeSession.sessionStart,
-        sessionEnd: activeSession.sessionEnd,
+        sessionEnd: null, // Active sessions don't have session end
         duration: currentDuration,
         sessionId: activeSession.id,
         status: activeSession.status === 1 ? 'active' : 'completed',
@@ -227,6 +233,9 @@ export class ClockInOutService {
         clockOutTime: null, // Active sessions don't have clock out time
         createdAt: activeSession.sessionStart,
       };
+
+      this.logger.log(`📊 Returning response: ${JSON.stringify(response)}`);
+      return response;
     } catch (error) {
       this.logger.error(`❌ Get current status failed for user ${userId}: ${error.message}`);
       return { isClockedIn: false };

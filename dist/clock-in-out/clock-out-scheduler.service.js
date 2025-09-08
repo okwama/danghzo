@@ -25,13 +25,14 @@ let ClockOutSchedulerService = ClockOutSchedulerService_1 = class ClockOutSchedu
         this.logger = new common_1.Logger(ClockOutSchedulerService_1.name);
     }
     async autoClockOutAllUsers() {
-        this.logger.log('🕕 Running automatic clock-out job at 7:00 PM (showing 6:00 PM end time)');
+        this.logger.log('🕕 Running automatic clock-out job at 7:00 PM Nairobi time (setting 6:00 PM end time)');
         try {
-            const today = new Date();
-            const endTime = new Date(today);
+            const now = new Date();
+            const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+            const endTime = new Date(nairobiTime);
             endTime.setHours(18, 0, 0, 0);
             const formattedEndTime = endTime.toISOString().slice(0, 19).replace('T', ' ');
-            this.logger.log(`📅 Setting end time to: ${formattedEndTime}`);
+            this.logger.log(`📅 Setting end time to: ${formattedEndTime} (Nairobi time)`);
             const activeSessions = await this.loginHistoryRepository.find({
                 where: {
                     status: 1,
@@ -84,7 +85,9 @@ let ClockOutSchedulerService = ClockOutSchedulerService_1 = class ClockOutSchedu
 };
 exports.ClockOutSchedulerService = ClockOutSchedulerService;
 __decorate([
-    (0, schedule_1.Cron)('0 19 * * *'),
+    (0, schedule_1.Cron)('0 19 * * *', {
+        timeZone: 'Africa/Nairobi'
+    }),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

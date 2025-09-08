@@ -95,8 +95,10 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
         try {
             const { userId, clientTime } = clockOutDto;
             this.logger.log(`🔴 Clock Out attempt for user ${userId} at ${clientTime}`);
-            const today = new Date();
-            const todayStr = today.toISOString().slice(0, 10);
+            this.logger.log(`🔍 ClockOut: Looking for active session for user ${userId}`);
+            const now = new Date();
+            const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
+            const todayStr = nairobiTime.toISOString().slice(0, 10);
             const activeSession = await this.loginHistoryRepository
                 .createQueryBuilder('session')
                 .where('session.userId = :userId', { userId })
@@ -106,11 +108,13 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                 .getOne();
             if (!activeSession) {
                 this.logger.warn(`⚠️ User ${userId} has no active session to clock out`);
+                this.logger.log(`🔍 ClockOut: No active session found for user ${userId} on ${todayStr}`);
                 return {
                     success: false,
                     message: 'You are not currently clocked in.',
                 };
             }
+            this.logger.log(`✅ ClockOut: Found active session ${activeSession.id} for user ${userId}`);
             const startTime = new Date(activeSession.sessionStart);
             const endTime = new Date(clientTime);
             const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
@@ -144,6 +148,7 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
     }
     async getCurrentStatus(userId) {
         try {
+            this.logger.log(`🔍 GetCurrentStatus called for user ${userId}`);
             const now = new Date();
             const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
             const todayStr = nairobiTime.toISOString().slice(0, 10);
@@ -157,23 +162,26 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                 .getOne();
             if (!activeSession) {
                 this.logger.log(`📊 User ${userId} has no active session for today (${todayStr})`);
+                this.logger.log(`📊 Returning: { isClockedIn: false }`);
                 return { isClockedIn: false };
             }
             const startTime = new Date(activeSession.sessionStart);
             const currentTime = new Date();
             const currentDuration = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
             this.logger.log(`📊 User ${userId} has active session for today: ${activeSession.sessionStart}, duration: ${currentDuration} minutes`);
-            return {
+            const response = {
                 isClockedIn: true,
                 sessionStart: activeSession.sessionStart,
-                sessionEnd: activeSession.sessionEnd,
+                sessionEnd: null,
                 duration: currentDuration,
                 sessionId: activeSession.id,
                 status: activeSession.status === 1 ? 'active' : 'completed',
                 clockInTime: activeSession.sessionStart,
-                clockOutTime: activeSession.sessionEnd,
+                clockOutTime: null,
                 createdAt: activeSession.sessionStart,
             };
+            this.logger.log(`📊 Returning response: ${JSON.stringify(response)}`);
+            return response;
         }
         catch (error) {
             this.logger.error(`❌ Get current status failed for user ${userId}: ${error.message}`);
