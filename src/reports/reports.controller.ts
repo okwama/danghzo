@@ -1,12 +1,17 @@
-import { Controller, Post, Get, Param, Body, UseGuards, Query, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, Query, ForbiddenException, Res, Header } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { ReportsService } from './reports.service';
 import { User } from '../auth/decorators/user.decorator';
+import { PdfExportService } from './pdf-export.service';
+import { Response } from 'express';
 
 @Controller('reports')
 @UseGuards(JwtAuthGuard)
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) {}
+  constructor(
+    private readonly reportsService: ReportsService,
+    private readonly pdfExportService: PdfExportService
+  ) {}
 
   @Post()
   async submitReport(@Body() reportData: any, @User('id') authenticatedUserId: number) {
@@ -262,6 +267,42 @@ export class ReportsController {
         success: false,
         error: error.message,
       };
+    }
+  }
+
+  @Get('visits/export/pdf')
+  @Header('Content-Type', 'application/pdf')
+  @Header('Content-Disposition', 'attachment; filename="visits-report.pdf"')
+  async exportVisitsPdf(
+    @User('id') userId: number,
+    @Res() res: Response,
+    @Query('weekStart') weekStart?: string,
+    @Query('format') format: 'weekly' | 'daily' = 'weekly'
+  ) {
+    try {
+      console.log('📄 Reports Controller: PDF export requested');
+      console.log(`📄 User ID: ${userId}, Week Start: ${weekStart}, Format: ${format}`);
+
+      const pdfBuffer = await this.pdfExportService.generateVisitsPdf(
+        userId,
+        weekStart,
+        format
+      );
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="visits-report-${weekStart || 'current'}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString(),
+      });
+
+      res.send(pdfBuffer);
+
+    } catch (error) {
+      console.error('❌ Reports Controller: Failed to export PDF:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message,
+      });
     }
   }
 }

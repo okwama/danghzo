@@ -101,7 +101,7 @@ let OrdersService = class OrdersService {
                         unitPrice: itemUnitPrice,
                         taxAmount: itemTax,
                         totalPrice: itemTotal,
-                        taxType: itemDto.taxType || 'vat_16',
+                        taxType: itemDto.taxType || '16%',
                         netPrice: itemTotal,
                         shippedQuantity: itemDto.shippedQuantity || 0,
                     };
@@ -277,7 +277,7 @@ let OrdersService = class OrdersService {
                         unitPrice: itemUnitPrice,
                         taxAmount: itemTax,
                         totalPrice: itemTotal,
-                        taxType: itemDto.taxType || 'vat_16',
+                        taxType: itemDto.taxType || '16%',
                         netPrice: itemTotal,
                         shippedQuantity: itemDto.shippedQuantity || 0,
                     };

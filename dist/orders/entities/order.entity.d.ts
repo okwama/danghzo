@@ -1,5 +1,6 @@
 import { Clients } from '../../entities/clients.entity';
 import { OrderItem } from './order-item.entity';
+import { Users } from '../../users/entities/users.entity';
 export declare class Order {
     id: number;
     soNumber: string;
@@ -18,6 +19,7 @@ export declare class Order {
     status: string;
     myStatus: number;
     client: Clients;
+    user: Users;
     orderItems: OrderItem[];
     createdAt: Date;
     updatedAt: Date;

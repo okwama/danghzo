@@ -17,9 +17,11 @@ const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const reports_service_1 = require("./reports.service");
 const user_decorator_1 = require("../auth/decorators/user.decorator");
+const pdf_export_service_1 = require("./pdf-export.service");
 let ReportsController = class ReportsController {
-    constructor(reportsService) {
+    constructor(reportsService, pdfExportService) {
         this.reportsService = reportsService;
+        this.pdfExportService = pdfExportService;
     }
     async submitReport(reportData, authenticatedUserId) {
         try {
@@ -200,6 +202,26 @@ let ReportsController = class ReportsController {
             };
         }
     }
+    async exportVisitsPdf(userId, res, weekStart, format = 'weekly') {
+        try {
+            console.log('📄 Reports Controller: PDF export requested');
+            console.log(`📄 User ID: ${userId}, Week Start: ${weekStart}, Format: ${format}`);
+            const pdfBuffer = await this.pdfExportService.generateVisitsPdf(userId, weekStart, format);
+            res.set({
+                'Content-Type': 'application/pdf',
+                'Content-Disposition': `attachment; filename="visits-report-${weekStart || 'current'}.pdf"`,
+                'Content-Length': pdfBuffer.length.toString(),
+            });
+            res.send(pdfBuffer);
+        }
+        catch (error) {
+            console.error('❌ Reports Controller: Failed to export PDF:', error);
+            res.status(500).json({
+                success: false,
+                error: error.message,
+            });
+        }
+    }
 };
 exports.ReportsController = ReportsController;
 __decorate([
@@ -269,9 +291,22 @@ __decorate([
     __metadata("design:paramtypes", [Number, Number, String, Number, Number, String, String]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getAllReports", null);
+__decorate([
+    (0, common_1.Get)('visits/export/pdf'),
+    (0, common_1.Header)('Content-Type', 'application/pdf'),
+    (0, common_1.Header)('Content-Disposition', 'attachment; filename="visits-report.pdf"'),
+    __param(0, (0, user_decorator_1.User)('id')),
+    __param(1, (0, common_1.Res)()),
+    __param(2, (0, common_1.Query)('weekStart')),
+    __param(3, (0, common_1.Query)('format')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object, String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "exportVisitsPdf", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, common_1.Controller)('reports'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __metadata("design:paramtypes", [reports_service_1.ReportsService])
+    __metadata("design:paramtypes", [reports_service_1.ReportsService,
+        pdf_export_service_1.PdfExportService])
 ], ReportsController);
 //# sourceMappingURL=reports.controller.js.map

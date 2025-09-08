@@ -73,7 +73,7 @@ let OutletsController = class OutletsController {
             countryId: body.country || req.user.countryId,
             addedBy: req.user.id,
         };
-        const client = await this.clientsService.create(createClientDto, req.user.countryId);
+        const client = await this.clientsService.create(createClientDto, req.user.countryId, req.user.id);
         return {
             id: client.id,
             name: client.name,

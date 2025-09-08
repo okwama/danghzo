@@ -1,16 +1,19 @@
 import { Repository } from 'typeorm';
 import { Clients } from '../entities/clients.entity';
 import { ClientAssignment } from '../entities/client-assignment.entity';
+import { ClientsProspects } from '../entities/clients-prospects.entity';
 import { CreateClientDto } from './dto/create-client.dto';
+import { CreateProspectDto } from './dto/create-prospect.dto';
 import { SearchClientsDto } from './dto/search-clients.dto';
 import { DatabaseResilienceService } from '../config/database-resilience.service';
 export declare class ClientsService {
     private clientRepository;
     private clientAssignmentRepository;
+    private clientsProspectsRepository;
     private readonly databaseResilienceService;
     private readonly logger;
-    constructor(clientRepository: Repository<Clients>, clientAssignmentRepository: Repository<ClientAssignment>, databaseResilienceService: DatabaseResilienceService);
-    create(createClientDto: CreateClientDto, userCountryId: number): Promise<Clients>;
+    constructor(clientRepository: Repository<Clients>, clientAssignmentRepository: Repository<ClientAssignment>, clientsProspectsRepository: Repository<ClientsProspects>, databaseResilienceService: DatabaseResilienceService);
+    create(createProspectDto: CreateProspectDto, userCountryId: number, addedBy: number): Promise<ClientsProspects>;
     findAll(userCountryId: number, userId?: number): Promise<Clients[]>;
     findOne(id: number, userCountryId: number): Promise<Clients | null>;
     findOneBasic(id: number, userCountryId: number): Promise<Clients | null>;
@@ -24,4 +27,6 @@ export declare class ClientsService {
     findPendingClients(userCountryId: number): Promise<Clients[]>;
     approveClient(id: number, userCountryId: number): Promise<Clients | null>;
     rejectClient(id: number, userCountryId: number): Promise<boolean>;
+    addToProspects(clientId: number, userCountryId: number, addedBy: number): Promise<ClientsProspects | null>;
+    findAllProspects(userCountryId: number, userId?: number): Promise<ClientsProspects[]>;
 }

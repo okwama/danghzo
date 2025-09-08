@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, Request } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
+import { CreateProspectDto } from './dto/create-prospect.dto';
 import { SearchClientsDto } from './dto/search-clients.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -10,9 +11,10 @@ export class ClientsController {
   constructor(private readonly clientsService: ClientsService) {}
 
   @Post()
-  async create(@Body() createClientDto: CreateClientDto, @Request() req) {
+  async create(@Body() createProspectDto: CreateProspectDto, @Request() req) {
     const userCountryId = req.user.countryId;
-    return this.clientsService.create(createClientDto, userCountryId);
+    const userId = req.user.id;
+    return this.clientsService.create(createProspectDto, userCountryId, userId);
   }
 
   @Get()
@@ -103,5 +105,19 @@ export class ClientsController {
   async getClientStats(@Query('regionId') regionId: string, @Request() req) {
     const userCountryId = req.user.countryId;
     return this.clientsService.getClientStats(userCountryId, regionId ? +regionId : undefined);
+  }
+
+  @Post(':id/add-to-prospects')
+  async addToProspects(@Param('id') id: string, @Request() req) {
+    const userCountryId = req.user.countryId;
+    const userId = req.user.id;
+    return this.clientsService.addToProspects(+id, userCountryId, userId);
+  }
+
+  @Get('prospects')
+  async findAllProspects(@Request() req) {
+    const userCountryId = req.user.countryId;
+    const userId = req.user.id;
+    return this.clientsService.findAllProspects(userCountryId, userId);
   }
 } 

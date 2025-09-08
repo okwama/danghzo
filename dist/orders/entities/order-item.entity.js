@@ -55,7 +55,7 @@ __decorate([
     __metadata("design:type", Number)
 ], OrderItem.prototype, "totalPrice", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ name: 'tax_type', type: 'enum', enum: ['vat_16', 'zero_rated', 'exempted'], default: 'vat_16', nullable: true }),
+    (0, typeorm_1.Column)({ name: 'tax_type', type: 'enum', enum: ['16%', 'zero_rated', 'exempted'], default: '16%', nullable: true }),
     __metadata("design:type", String)
 ], OrderItem.prototype, "taxType", void 0);
 __decorate([

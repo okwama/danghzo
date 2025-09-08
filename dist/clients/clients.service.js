@@ -19,23 +19,27 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const clients_entity_1 = require("../entities/clients.entity");
 const client_assignment_entity_1 = require("../entities/client-assignment.entity");
+const clients_prospects_entity_1 = require("../entities/clients-prospects.entity");
 const database_resilience_service_1 = require("../config/database-resilience.service");
 let ClientsService = ClientsService_1 = class ClientsService {
-    constructor(clientRepository, clientAssignmentRepository, databaseResilienceService) {
+    constructor(clientRepository, clientAssignmentRepository, clientsProspectsRepository, databaseResilienceService) {
         this.clientRepository = clientRepository;
         this.clientAssignmentRepository = clientAssignmentRepository;
+        this.clientsProspectsRepository = clientsProspectsRepository;
         this.databaseResilienceService = databaseResilienceService;
         this.logger = new common_1.Logger(ClientsService_1.name);
     }
-    async create(createClientDto, userCountryId) {
+    async create(createProspectDto, userCountryId, addedBy) {
         return this.databaseResilienceService.executeWithRetry(async () => {
-            const clientData = {
-                ...createClientDto,
+            const prospectData = {
+                ...createProspectDto,
                 countryId: userCountryId,
                 status: 1,
+                added_by: addedBy,
+                created_at: new Date()
             };
-            const client = this.clientRepository.create(clientData);
-            return this.clientRepository.save(client);
+            const prospect = this.clientsProspectsRepository.create(prospectData);
+            return this.clientsProspectsRepository.save(prospect);
         }, { maxAttempts: 3, timeout: 15000 });
     }
     async findAll(userCountryId, userId) {
@@ -301,13 +305,88 @@ let ClientsService = ClientsService_1 = class ClientsService {
             return true;
         }, { maxAttempts: 3, timeout: 15000 });
     }
+    async addToProspects(clientId, userCountryId, addedBy) {
+        return this.databaseResilienceService.executeWithRetry(async () => {
+            const existingClient = await this.findOne(clientId, userCountryId);
+            if (!existingClient) {
+                this.logger.warn(`Client ${clientId} not found or not accessible for country ${userCountryId}`);
+                return null;
+            }
+            const existingProspect = await this.clientsProspectsRepository.findOne({
+                where: {
+                    name: existingClient.name,
+                    contact: existingClient.contact,
+                    countryId: userCountryId
+                }
+            });
+            if (existingProspect) {
+                this.logger.warn(`Client ${existingClient.name} is already in prospects`);
+                return existingProspect;
+            }
+            const prospectData = {
+                name: existingClient.name,
+                address: existingClient.address,
+                latitude: existingClient.latitude,
+                longitude: existingClient.longitude,
+                balance: existingClient.balance,
+                email: existingClient.email,
+                region_id: existingClient.region_id,
+                region: existingClient.region,
+                route_id: existingClient.route_id,
+                route_name: existingClient.route_name,
+                route_id_update: existingClient.route_id_update,
+                route_name_update: existingClient.route_name_update,
+                contact: existingClient.contact,
+                tax_pin: existingClient.tax_pin,
+                location: existingClient.location,
+                status: 1,
+                client_type: existingClient.client_type,
+                outlet_account: existingClient.outlet_account,
+                credit_limit: existingClient.credit_limit,
+                payment_terms: existingClient.payment_terms,
+                countryId: userCountryId,
+                added_by: addedBy,
+                created_at: new Date()
+            };
+            const prospect = this.clientsProspectsRepository.create(prospectData);
+            const savedProspect = await this.clientsProspectsRepository.save(prospect);
+            this.logger.log(`✅ Client ${existingClient.name} added to prospects successfully`);
+            return savedProspect;
+        }, { maxAttempts: 3, timeout: 15000 });
+    }
+    async findAllProspects(userCountryId, userId) {
+        return this.databaseResilienceService.executeWithRetry(async () => {
+            return this.clientsProspectsRepository.find({
+                where: {
+                    status: 1,
+                    countryId: userCountryId,
+                },
+                select: [
+                    'id',
+                    'name',
+                    'contact',
+                    'region',
+                    'region_id',
+                    'status',
+                    'countryId',
+                    'email',
+                    'address',
+                    'created_at',
+                    'added_by'
+                ],
+                order: { name: 'ASC' },
+            });
+        }, { maxAttempts: 3, timeout: 20000 });
+    }
 };
 exports.ClientsService = ClientsService;
 exports.ClientsService = ClientsService = ClientsService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(clients_entity_1.Clients)),
     __param(1, (0, typeorm_1.InjectRepository)(client_assignment_entity_1.ClientAssignment)),
+    __param(2, (0, typeorm_1.InjectRepository)(clients_prospects_entity_1.ClientsProspects)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         database_resilience_service_1.DatabaseResilienceService])
 ], ClientsService);

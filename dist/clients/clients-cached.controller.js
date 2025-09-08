@@ -35,7 +35,7 @@ let ClientsCachedController = ClientsCachedController_1 = class ClientsCachedCon
             if (!isConnected) {
                 throw new common_1.HttpException('Database connection unavailable', common_1.HttpStatus.SERVICE_UNAVAILABLE);
             }
-            const result = await this.clientsService.create(createClientDto, userCountryId);
+            const result = await this.clientsService.create(createClientDto, userCountryId, req.user.id);
             await this.dataCacheService.invalidateClientsCache();
             return {
                 success: true,

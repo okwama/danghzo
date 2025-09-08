@@ -13,6 +13,7 @@ exports.Order = void 0;
 const typeorm_1 = require("typeorm");
 const clients_entity_1 = require("../../entities/clients.entity");
 const order_item_entity_1 = require("./order-item.entity");
+const users_entity_1 = require("../../users/entities/users.entity");
 let Order = class Order {
 };
 exports.Order = Order;
@@ -73,7 +74,7 @@ __decorate([
     __metadata("design:type", Date)
 ], Order.prototype, "assignedAt", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ['draft', 'confirmed', 'shipped', 'delivered', 'cancelled', 'in_payment', 'paid'], default: 'draft' }),
+    (0, typeorm_1.Column)({ type: 'enum', enum: ['draft', 'confirmed', 'shipped', 'delivered', 'cancelled', 'in payment', 'paid'], default: 'draft' }),
     __metadata("design:type", String)
 ], Order.prototype, "status", void 0);
 __decorate([
@@ -85,6 +86,11 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'client_id' }),
     __metadata("design:type", clients_entity_1.Clients)
 ], Order.prototype, "client", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => users_entity_1.Users, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'salesrep' }),
+    __metadata("design:type", users_entity_1.Users)
+], Order.prototype, "user", void 0);
 __decorate([
     (0, typeorm_1.OneToMany)(() => order_item_entity_1.OrderItem, orderItem => orderItem.order),
     __metadata("design:type", Array)

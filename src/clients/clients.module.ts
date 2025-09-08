@@ -6,12 +6,13 @@ import { ClientsCachedController } from './clients-cached.controller';
 import { ClientsService } from './clients.service';
 import { Clients } from '../entities/clients.entity';
 import { ClientAssignment } from '../entities/client-assignment.entity';
+import { ClientsProspects } from '../entities/clients-prospects.entity';
 import { DatabaseResilienceService } from '../config/database-resilience.service';
 import { AppCacheModule } from '../cache/cache.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Clients, ClientAssignment]),
+    TypeOrmModule.forFeature([Clients, ClientAssignment, ClientsProspects]),
     AppCacheModule,
   ],
   controllers: [ClientsController, OutletsController, ClientsCachedController],

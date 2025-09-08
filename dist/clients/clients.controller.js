@@ -15,16 +15,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClientsController = void 0;
 const common_1 = require("@nestjs/common");
 const clients_service_1 = require("./clients.service");
-const create_client_dto_1 = require("./dto/create-client.dto");
+const create_prospect_dto_1 = require("./dto/create-prospect.dto");
 const search_clients_dto_1 = require("./dto/search-clients.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 let ClientsController = class ClientsController {
     constructor(clientsService) {
         this.clientsService = clientsService;
     }
-    async create(createClientDto, req) {
+    async create(createProspectDto, req) {
         const userCountryId = req.user.countryId;
-        return this.clientsService.create(createClientDto, userCountryId);
+        const userId = req.user.id;
+        return this.clientsService.create(createProspectDto, userCountryId, userId);
     }
     async findAll(req) {
         const userCountryId = req.user.countryId;
@@ -76,6 +77,16 @@ let ClientsController = class ClientsController {
         const userCountryId = req.user.countryId;
         return this.clientsService.getClientStats(userCountryId, regionId ? +regionId : undefined);
     }
+    async addToProspects(id, req) {
+        const userCountryId = req.user.countryId;
+        const userId = req.user.id;
+        return this.clientsService.addToProspects(+id, userCountryId, userId);
+    }
+    async findAllProspects(req) {
+        const userCountryId = req.user.countryId;
+        const userId = req.user.id;
+        return this.clientsService.findAllProspects(userCountryId, userId);
+    }
 };
 exports.ClientsController = ClientsController;
 __decorate([
@@ -83,7 +94,7 @@ __decorate([
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [create_client_dto_1.CreateClientDto, Object]),
+    __metadata("design:paramtypes", [create_prospect_dto_1.CreateProspectDto, Object]),
     __metadata("design:returntype", Promise)
 ], ClientsController.prototype, "create", null);
 __decorate([
@@ -183,6 +194,21 @@ __decorate([
     __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], ClientsController.prototype, "getClientStats", null);
+__decorate([
+    (0, common_1.Post)(':id/add-to-prospects'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], ClientsController.prototype, "addToProspects", null);
+__decorate([
+    (0, common_1.Get)('prospects'),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ClientsController.prototype, "findAllProspects", null);
 exports.ClientsController = ClientsController = __decorate([
     (0, common_1.Controller)('clients'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

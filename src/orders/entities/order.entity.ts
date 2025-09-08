@@ -56,7 +56,7 @@ export class Order {
   @Column({ name: 'assigned_at', type: 'timestamp', nullable: true })
   assignedAt: Date;
 
-  @Column({ type: 'enum', enum: ['draft', 'confirmed', 'shipped', 'delivered', 'cancelled', 'in_payment', 'paid'], default: 'draft' })
+  @Column({ type: 'enum', enum: ['draft', 'confirmed', 'shipped', 'delivered', 'cancelled', 'in payment', 'paid'], default: 'draft' })
   status: string;
 
   @Column({ name: 'my_status', type: 'tinyint' })
@@ -67,6 +67,10 @@ export class Order {
   @ManyToOne(() => Clients)
   @JoinColumn({ name: 'client_id' })
   client: Clients;
+
+  @ManyToOne(() => Users, { nullable: true })
+  @JoinColumn({ name: 'salesrep' })
+  user: Users;
 
   @OneToMany(() => OrderItem, orderItem => orderItem.order)
   orderItems: OrderItem[];

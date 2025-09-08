@@ -3,7 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like, In } from 'typeorm';
 import { Clients } from '../entities/clients.entity';
 import { ClientAssignment } from '../entities/client-assignment.entity';
+import { ClientsProspects } from '../entities/clients-prospects.entity';
 import { CreateClientDto } from './dto/create-client.dto';
+import { CreateProspectDto } from './dto/create-prospect.dto';
 import { SearchClientsDto } from './dto/search-clients.dto';
 import { DatabaseResilienceService } from '../config/database-resilience.service';
 
@@ -16,21 +18,24 @@ export class ClientsService {
     private clientRepository: Repository<Clients>,
     @InjectRepository(ClientAssignment)
     private clientAssignmentRepository: Repository<ClientAssignment>,
+    @InjectRepository(ClientsProspects)
+    private clientsProspectsRepository: Repository<ClientsProspects>,
     private readonly databaseResilienceService: DatabaseResilienceService,
   ) {}
 
-  async create(createClientDto: CreateClientDto, userCountryId: number): Promise<Clients> {
+  async create(createProspectDto: CreateProspectDto, userCountryId: number, addedBy: number): Promise<ClientsProspects> {
     return this.databaseResilienceService.executeWithRetry(async () => {
-      // Ensure the client is created in the user's country
-      // New clients are created with status 0 (pending approval)
-      const clientData = {
-        ...createClientDto,
+      // Sales reps add clients directly to prospects table
+      const prospectData = {
+        ...createProspectDto,
         countryId: userCountryId,
-        status: 1, // Pending approval - admin will change to 1 when approved
+        status: 1, // Active prospect
+        added_by: addedBy,
+        created_at: new Date()
       };
       
-      const client = this.clientRepository.create(clientData);
-      return this.clientRepository.save(client);
+      const prospect = this.clientsProspectsRepository.create(prospectData);
+      return this.clientsProspectsRepository.save(prospect);
     }, { maxAttempts: 3, timeout: 15000 });
   }
 
@@ -345,5 +350,90 @@ export class ClientsService {
       await this.clientRepository.update(id, { status: 2 }); // 2 = rejected
       return true;
     }, { maxAttempts: 3, timeout: 15000 });
+  }
+
+  // Add client to prospects
+  async addToProspects(clientId: number, userCountryId: number, addedBy: number): Promise<ClientsProspects | null> {
+    return this.databaseResilienceService.executeWithRetry(async () => {
+      // First check if client exists and belongs to user's country
+      const existingClient = await this.findOne(clientId, userCountryId);
+      if (!existingClient) {
+        this.logger.warn(`Client ${clientId} not found or not accessible for country ${userCountryId}`);
+        return null;
+      }
+
+      // Check if client is already in prospects
+      const existingProspect = await this.clientsProspectsRepository.findOne({
+        where: { 
+          name: existingClient.name,
+          contact: existingClient.contact,
+          countryId: userCountryId
+        }
+      });
+
+      if (existingProspect) {
+        this.logger.warn(`Client ${existingClient.name} is already in prospects`);
+        return existingProspect;
+      }
+
+      // Create prospect from client data
+      const prospectData = {
+        name: existingClient.name,
+        address: existingClient.address,
+        latitude: existingClient.latitude,
+        longitude: existingClient.longitude,
+        balance: existingClient.balance,
+        email: existingClient.email,
+        region_id: existingClient.region_id,
+        region: existingClient.region,
+        route_id: existingClient.route_id,
+        route_name: existingClient.route_name,
+        route_id_update: existingClient.route_id_update,
+        route_name_update: existingClient.route_name_update,
+        contact: existingClient.contact,
+        tax_pin: existingClient.tax_pin,
+        location: existingClient.location,
+        status: 1, // Active prospect
+        client_type: existingClient.client_type,
+        outlet_account: existingClient.outlet_account,
+        credit_limit: existingClient.credit_limit,
+        payment_terms: existingClient.payment_terms,
+        countryId: userCountryId,
+        added_by: addedBy,
+        created_at: new Date()
+      };
+
+      const prospect = this.clientsProspectsRepository.create(prospectData);
+      const savedProspect = await this.clientsProspectsRepository.save(prospect);
+      
+      this.logger.log(`✅ Client ${existingClient.name} added to prospects successfully`);
+      return savedProspect;
+    }, { maxAttempts: 3, timeout: 15000 });
+  }
+
+  // Get all prospects (clients from prospects table)
+  async findAllProspects(userCountryId: number, userId?: number): Promise<ClientsProspects[]> {
+    return this.databaseResilienceService.executeWithRetry(async () => {
+      return this.clientsProspectsRepository.find({
+        where: { 
+          status: 1, // Only active prospects
+          countryId: userCountryId, // Only prospects in user's country
+        },
+        select: [
+          'id',
+          'name', 
+          'contact',
+          'region',
+          'region_id',
+          'status',
+          'countryId',
+          'email',
+          'address',
+          'created_at',
+          'added_by'
+        ],
+        order: { name: 'ASC' },
+      });
+    }, { maxAttempts: 3, timeout: 20000 });
   }
 } 

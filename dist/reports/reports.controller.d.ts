@@ -1,7 +1,10 @@
 import { ReportsService } from './reports.service';
+import { PdfExportService } from './pdf-export.service';
+import { Response } from 'express';
 export declare class ReportsController {
     private readonly reportsService;
-    constructor(reportsService: ReportsService);
+    private readonly pdfExportService;
+    constructor(reportsService: ReportsService, pdfExportService: PdfExportService);
     submitReport(reportData: any, authenticatedUserId: number): Promise<{
         success: boolean;
         report: {
@@ -75,4 +78,5 @@ export declare class ReportsController {
         error: any;
         data?: undefined;
     }>;
+    exportVisitsPdf(userId: number, res: Response, weekStart?: string, format?: 'weekly' | 'daily'): Promise<void>;
 }

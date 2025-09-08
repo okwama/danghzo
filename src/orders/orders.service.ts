@@ -117,7 +117,7 @@ export class OrdersService {
             unitPrice: itemUnitPrice,
             taxAmount: itemTax,
             totalPrice: itemTotal, // This is tax-inclusive
-            taxType: itemDto.taxType || 'vat_16',
+            taxType: itemDto.taxType || '16%',
             netPrice: itemTotal, // Net price is same as total for tax-inclusive
             shippedQuantity: itemDto.shippedQuantity || 0,
           };
@@ -372,7 +372,7 @@ export class OrdersService {
             unitPrice: itemUnitPrice,
             taxAmount: itemTax,
             totalPrice: itemTotal, // This is tax-inclusive
-            taxType: itemDto.taxType || 'vat_16',
+            taxType: itemDto.taxType || '16%',
             netPrice: itemTotal, // Net price is same as total for tax-inclusive
             shippedQuantity: itemDto.shippedQuantity || 0,
           };

@@ -30,8 +30,14 @@ let AuthService = AuthService_1 = class AuthService {
         }
         this.logger.log(`👤 User found: ${user.name} (ID: ${user.id}, Status: ${user.status})`);
         if (user.status !== 1) {
-            this.logger.warn(`❌ User ${user.name} is inactive (status: ${user.status})`);
-            return null;
+            if (user.status === 0) {
+                this.logger.warn(`❌ User ${user.name} account is pending approval (status: ${user.status})`);
+                throw new common_1.UnauthorizedException('Your account is pending approval. Please wait for admin approval before logging in.');
+            }
+            else {
+                this.logger.warn(`❌ User ${user.name} is inactive (status: ${user.status})`);
+                throw new common_1.UnauthorizedException('Your account is inactive. Please contact support.');
+            }
         }
         const isValidPassword = await user.validatePassword(password);
         this.logger.log(`🔐 Password validation for ${user.name}: ${isValidPassword ? '✅ Valid' : '❌ Invalid'}`);
@@ -170,41 +176,37 @@ let AuthService = AuthService_1 = class AuthService {
                 email: registerData.email,
                 phoneNumber: registerData.phoneNumber,
                 password: hashedPassword,
-                role: registerData.role || 'sales_rep',
-                status: 1,
-                countryId: 1,
-                region_id: 1,
-                route_id: 1,
-                managerType: 0,
-                retailManager: 0,
-                keyChannelManager: 0,
-                distributionManager: 0,
-                visitsTargets: 0,
-                newClients: 0,
-                vapesTargets: 0,
-                pouchesTargets: 0,
-                created_at: new Date(),
-                updated_at: new Date()
+                countryId: registerData.countryId,
+                country: registerData.country,
+                region_id: registerData.regionId,
+                region: registerData.region,
+                route_id: registerData.routeId,
+                route: registerData.route,
+                route_id_update: registerData.routeId,
+                route_name_update: registerData.route,
+                role: registerData.role || 'SALES_REP',
+                managerType: registerData.managerType || 0,
+                status: 0,
+                retail_manager: registerData.retailManager || 0,
+                key_channel_manager: registerData.keyChannelManager || 0,
+                distribution_manager: registerData.distributionManager || 0,
+                visits_targets: 0,
+                new_clients: 0,
+                vapes_targets: 0,
+                pouches_targets: 0,
+                photoUrl: registerData.photoUrl || '',
+                managerId: registerData.managerId || null,
+                createdAt: new Date(),
+                updatedAt: new Date()
             };
             const newUser = await this.usersService.create(userData);
             this.logger.log(`✅ User created successfully: ${newUser.name} (ID: ${newUser.id})`);
-            const payload = {
-                phoneNumber: newUser.phoneNumber,
-                sub: newUser.id,
-                role: newUser.role,
-                countryId: newUser.countryId,
-                regionId: newUser.region_id,
-                routeId: newUser.route_id
-            };
-            const token = this.jwtService.sign(payload);
-            const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-            this.logger.log(`🎫 JWT tokens generated for new user: ${newUser.name}`);
+            this.logger.log(`📝 User registered successfully and pending approval: ${newUser.name}`);
             const response = {
                 success: true,
-                message: 'User registered successfully',
-                accessToken: token,
-                refreshToken: refreshToken,
-                expiresIn: 32400,
+                message: 'Account created successfully! Your account is pending approval. You will receive an email notification once your account is approved.',
+                requiresApproval: true,
+                status: 'pending',
                 salesRep: {
                     id: newUser.id,
                     name: newUser.name,

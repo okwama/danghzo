@@ -11,7 +11,7 @@ export declare class ClientsCachedController {
     constructor(clientsService: ClientsService, dataCacheService: DataCacheService, databaseResilienceService: DatabaseResilienceService);
     create(createClientDto: CreateClientDto, req: any): Promise<{
         success: boolean;
-        data: import("../entities").Clients;
+        data: import("../entities/clients-prospects.entity").ClientsProspects;
         message: string;
         timestamp: string;
         error?: undefined;

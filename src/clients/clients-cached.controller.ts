@@ -28,7 +28,7 @@ export class ClientsCachedController {
         throw new HttpException('Database connection unavailable', HttpStatus.SERVICE_UNAVAILABLE);
       }
 
-      const result = await this.clientsService.create(createClientDto, userCountryId);
+      const result = await this.clientsService.create(createClientDto, userCountryId, req.user.id);
       
       // Invalidate clients cache after creating new client
       await this.dataCacheService.invalidateClientsCache();

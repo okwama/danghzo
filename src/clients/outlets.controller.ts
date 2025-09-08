@@ -71,7 +71,7 @@ export class OutletsController {
       addedBy: req.user.id,
     };
 
-    const client = await this.clientsService.create(createClientDto, req.user.countryId);
+    const client = await this.clientsService.create(createClientDto, req.user.countryId, req.user.id);
     
     // Transform response to match Flutter's expected Client model
     return {

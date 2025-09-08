@@ -39,7 +39,7 @@ export class OrderItem {
   @Column({ name: 'total_price', type: 'decimal', precision: 15, scale: 2 })
   totalPrice: number;
 
-  @Column({ name: 'tax_type', type: 'enum', enum: ['vat_16', 'zero_rated', 'exempted'], default: 'vat_16', nullable: true })
+  @Column({ name: 'tax_type', type: 'enum', enum: ['16%', 'zero_rated', 'exempted'], default: '16%', nullable: true })
   taxType: string;
 
   @Column({ name: 'net_price', type: 'decimal', precision: 11, scale: 2 })

@@ -11,6 +11,7 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const reports_controller_1 = require("./reports.controller");
 const reports_service_1 = require("./reports.service");
+const pdf_export_service_1 = require("./pdf-export.service");
 const feedback_report_entity_1 = require("../entities/feedback-report.entity");
 const product_report_entity_1 = require("../entities/product-report.entity");
 const visibility_report_entity_1 = require("../entities/visibility-report.entity");
@@ -27,8 +28,8 @@ exports.ReportsModule = ReportsModule = __decorate([
             ]),
         ],
         controllers: [reports_controller_1.ReportsController],
-        providers: [reports_service_1.ReportsService],
-        exports: [reports_service_1.ReportsService],
+        providers: [reports_service_1.ReportsService, pdf_export_service_1.PdfExportService],
+        exports: [reports_service_1.ReportsService, pdf_export_service_1.PdfExportService],
     })
 ], ReportsModule);
 //# sourceMappingURL=reports.module.js.map

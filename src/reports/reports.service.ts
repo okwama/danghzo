@@ -607,7 +607,7 @@ export class ReportsService {
   // Simplified method to get ALL reports for user (no date filtering)
   async getWeeklyVisits(userId: number, weekStart: Date): Promise<{ [date: string]: any[] }> {
     try {
-      console.log(`🔍 Getting ALL reports for user: ${userId} (ignoring date range for now)`);
+      console.log(`🔍 Getting weekly reports for user: ${userId} for week starting: ${weekStart.toISOString()}`);
       console.log(`🔍 User ID: ${userId} (type: ${typeof userId})`);
       
       // Helper function to get date key
@@ -615,20 +615,36 @@ export class ReportsService {
         return date.toISOString().split('T')[0]; // YYYY-MM-DD format
       };
 
-      // Get ALL reports for this user (no date filtering)
-      console.log(`🔍 Fetching ALL reports for user ${userId}...`);
+      // Calculate the week range (Monday to Sunday)
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999); // End of Sunday
+      
+      console.log(`🔍 Week range: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
+      
+      // Get reports for this specific week
+      console.log(`🔍 Fetching reports for user ${userId} between ${weekStart.toISOString()} and ${weekEnd.toISOString()}...`);
       
       const [feedbackReports, productReports, visibilityReports] = await Promise.all([
         this.feedbackReportRepository.find({ 
-          where: { userId },
+          where: { 
+            userId,
+            createdAt: Between(weekStart, weekEnd)
+          },
           relations: ['client', 'user'],
         }),
         this.productReportRepository.find({ 
-          where: { userId },
+          where: { 
+            userId,
+            createdAt: Between(weekStart, weekEnd)
+          },
           relations: ['client', 'user'],
         }),
         this.visibilityReportRepository.find({ 
-          where: { userId },
+          where: { 
+            userId,
+            createdAt: Between(weekStart, weekEnd)
+          },
           relations: ['client', 'user'],
         }),
       ]);
@@ -654,16 +670,15 @@ export class ReportsService {
       console.log(`📊 Total reports found: ${totalReports}`);
       
       if (totalReports === 0) {
-        console.log('⚠️ No reports found for this user');
-        return {
-          '2025-09-01': [],
-          '2025-09-02': [],
-          '2025-09-03': [],
-          '2025-09-04': [],
-          '2025-09-05': [],
-          '2025-09-06': [],
-          '2025-09-07': []
-        };
+        console.log('⚠️ No reports found for this user in the specified week');
+        // Return empty arrays for all 7 days of the week
+        const result: { [date: string]: any[] } = {};
+        for (let i = 0; i < 7; i++) {
+          const date = new Date(weekStart);
+          date.setDate(weekStart.getDate() + i);
+          result[getDateKey(date)] = [];
+        }
+        return result;
       }
       
       console.log('✅ Reports found! Processing data...');
@@ -683,11 +698,28 @@ export class ReportsService {
       
       // Group by date first, then by journey plan (reportId)
       allReports.forEach(report => {
-        const dateKey = getDateKey(report.createdAt);
-        console.log(`📅 Report on ${dateKey}: ${report.type} for client ${report.clientId}, JP: ${report.reportId}`);
+        // Robust data validation
+        if (!report || !report.createdAt) {
+          console.warn('⚠️ Skipping report with missing createdAt:', report);
+          return;
+        }
         
-        if (!result[dateKey]) {
-          result[dateKey] = [];
+        if (!report.clientId || !report.userId) {
+          console.warn('⚠️ Skipping report with missing clientId or userId:', report);
+          return;
+        }
+        
+        let dateKey: string;
+        try {
+          dateKey = getDateKey(report.createdAt);
+          console.log(`📅 Report on ${dateKey}: ${report.type} for client ${report.clientId}, JP: ${report.reportId}`);
+          
+          if (!result[dateKey]) {
+            result[dateKey] = [];
+          }
+        } catch (error) {
+          console.error('❌ Error processing report date:', error, report);
+          return;
         }
         
         // Check if we already have a visit for this journey plan on this date
@@ -797,16 +829,14 @@ export class ReportsService {
         });
       });
       
-      // Add some basic week structure
-      const weeklyResult = {
-        '2025-09-01': result['2025-09-01'] || [],
-        '2025-09-02': result['2025-09-02'] || [],
-        '2025-09-03': result['2025-09-03'] || [],
-        '2025-09-04': result['2025-09-04'] || [],
-        '2025-09-05': result['2025-09-05'] || [],
-        '2025-09-06': result['2025-09-06'] || [],
-        '2025-09-07': result['2025-09-07'] || []
-      };
+      // Ensure all 7 days of the week are included, even if no visits
+      const weeklyResult: { [date: string]: any[] } = {};
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(weekStart);
+        date.setDate(weekStart.getDate() + i);
+        const dateKey = getDateKey(date);
+        weeklyResult[dateKey] = result[dateKey] || [];
+      }
       
       console.log(`🔍 Final result structure:`, JSON.stringify(weeklyResult, null, 2));
       console.log(`🔍 Final result type: ${typeof weeklyResult}`);

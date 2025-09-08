@@ -480,23 +480,36 @@ let ReportsService = class ReportsService {
     }
     async getWeeklyVisits(userId, weekStart) {
         try {
-            console.log(`🔍 Getting ALL reports for user: ${userId} (ignoring date range for now)`);
+            console.log(`🔍 Getting weekly reports for user: ${userId} for week starting: ${weekStart.toISOString()}`);
             console.log(`🔍 User ID: ${userId} (type: ${typeof userId})`);
             const getDateKey = (date) => {
                 return date.toISOString().split('T')[0];
             };
-            console.log(`🔍 Fetching ALL reports for user ${userId}...`);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            console.log(`🔍 Week range: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
+            console.log(`🔍 Fetching reports for user ${userId} between ${weekStart.toISOString()} and ${weekEnd.toISOString()}...`);
             const [feedbackReports, productReports, visibilityReports] = await Promise.all([
                 this.feedbackReportRepository.find({
-                    where: { userId },
+                    where: {
+                        userId,
+                        createdAt: (0, typeorm_2.Between)(weekStart, weekEnd)
+                    },
                     relations: ['client', 'user'],
                 }),
                 this.productReportRepository.find({
-                    where: { userId },
+                    where: {
+                        userId,
+                        createdAt: (0, typeorm_2.Between)(weekStart, weekEnd)
+                    },
                     relations: ['client', 'user'],
                 }),
                 this.visibilityReportRepository.find({
-                    where: { userId },
+                    where: {
+                        userId,
+                        createdAt: (0, typeorm_2.Between)(weekStart, weekEnd)
+                    },
                     relations: ['client', 'user'],
                 }),
             ]);
@@ -516,16 +529,14 @@ let ReportsService = class ReportsService {
             const totalReports = feedbackReports.length + productReports.length + visibilityReports.length;
             console.log(`📊 Total reports found: ${totalReports}`);
             if (totalReports === 0) {
-                console.log('⚠️ No reports found for this user');
-                return {
-                    '2025-09-01': [],
-                    '2025-09-02': [],
-                    '2025-09-03': [],
-                    '2025-09-04': [],
-                    '2025-09-05': [],
-                    '2025-09-06': [],
-                    '2025-09-07': []
-                };
+                console.log('⚠️ No reports found for this user in the specified week');
+                const result = {};
+                for (let i = 0; i < 7; i++) {
+                    const date = new Date(weekStart);
+                    date.setDate(weekStart.getDate() + i);
+                    result[getDateKey(date)] = [];
+                }
+                return result;
             }
             console.log('✅ Reports found! Processing data...');
             console.log('🔍 Processing reports - grouping by date and journey plan...');
@@ -537,10 +548,25 @@ let ReportsService = class ReportsService {
             ];
             console.log(`🔍 Processing ${allReports.length} total reports...`);
             allReports.forEach(report => {
-                const dateKey = getDateKey(report.createdAt);
-                console.log(`📅 Report on ${dateKey}: ${report.type} for client ${report.clientId}, JP: ${report.reportId}`);
-                if (!result[dateKey]) {
-                    result[dateKey] = [];
+                if (!report || !report.createdAt) {
+                    console.warn('⚠️ Skipping report with missing createdAt:', report);
+                    return;
+                }
+                if (!report.clientId || !report.userId) {
+                    console.warn('⚠️ Skipping report with missing clientId or userId:', report);
+                    return;
+                }
+                let dateKey;
+                try {
+                    dateKey = getDateKey(report.createdAt);
+                    console.log(`📅 Report on ${dateKey}: ${report.type} for client ${report.clientId}, JP: ${report.reportId}`);
+                    if (!result[dateKey]) {
+                        result[dateKey] = [];
+                    }
+                }
+                catch (error) {
+                    console.error('❌ Error processing report date:', error, report);
+                    return;
                 }
                 const existingVisitIndex = result[dateKey].findIndex(visit => visit.reportId === report.reportId);
                 if (existingVisitIndex >= 0) {
@@ -641,15 +667,13 @@ let ReportsService = class ReportsService {
                     console.log(`  Visit ${index + 1}: JP ${visit.reportId}, Client ${visit.clientId} (${visit.clientName}), Reports: ${visit.totalReports}, Complete: ${visit.isComplete}`);
                 });
             });
-            const weeklyResult = {
-                '2025-09-01': result['2025-09-01'] || [],
-                '2025-09-02': result['2025-09-02'] || [],
-                '2025-09-03': result['2025-09-03'] || [],
-                '2025-09-04': result['2025-09-04'] || [],
-                '2025-09-05': result['2025-09-05'] || [],
-                '2025-09-06': result['2025-09-06'] || [],
-                '2025-09-07': result['2025-09-07'] || []
-            };
+            const weeklyResult = {};
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(weekStart);
+                date.setDate(weekStart.getDate() + i);
+                const dateKey = getDateKey(date);
+                weeklyResult[dateKey] = result[dateKey] || [];
+            }
             console.log(`🔍 Final result structure:`, JSON.stringify(weeklyResult, null, 2));
             console.log(`🔍 Final result type: ${typeof weeklyResult}`);
             console.log(`🔍 Final result keys: ${Object.keys(weeklyResult)}`);
