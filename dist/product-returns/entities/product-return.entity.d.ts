@@ -1,5 +1,5 @@
 import { SalesRep } from '../../entities/sales-rep.entity';
-import { Product } from '../../entities/product.entity';
+import { Product } from '../../products/entities/product.entity';
 import { Clients } from '../../entities/clients.entity';
 export declare class ProductReturn {
     id: number;

@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductReturn = void 0;
 const typeorm_1 = require("typeorm");
 const sales_rep_entity_1 = require("../../entities/sales-rep.entity");
-const product_entity_1 = require("../../entities/product.entity");
+const product_entity_1 = require("../../products/entities/product.entity");
 const clients_entity_1 = require("../../entities/clients.entity");
 let ProductReturn = class ProductReturn {
 };
