@@ -14,6 +14,7 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const users_service_1 = require("../users/users.service");
+const bcrypt = require("bcryptjs");
 let AuthService = AuthService_1 = class AuthService {
     constructor(usersService, jwtService) {
         this.usersService = usersService;
@@ -143,6 +144,86 @@ let AuthService = AuthService_1 = class AuthService {
         catch (error) {
             this.logger.error('❌ Refresh token validation failed', error.stack);
             throw new common_1.UnauthorizedException('Invalid refresh token');
+        }
+    }
+    async register(registerData) {
+        this.logger.log('📝 User registration attempt');
+        this.logger.log(`📱 Phone Number: ${registerData.phoneNumber}`);
+        this.logger.log(`📧 Email: ${registerData.email}`);
+        this.logger.log(`👤 Name: ${registerData.name}`);
+        try {
+            const existingUserByPhone = await this.usersService.findByPhoneNumber(registerData.phoneNumber);
+            if (existingUserByPhone) {
+                this.logger.warn(`❌ User already exists with phone: ${registerData.phoneNumber}`);
+                throw new common_1.ConflictException('User with this phone number already exists');
+            }
+            const existingUserByEmail = await this.usersService.findByEmail(registerData.email);
+            if (existingUserByEmail) {
+                this.logger.warn(`❌ User already exists with email: ${registerData.email}`);
+                throw new common_1.ConflictException('User with this email already exists');
+            }
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(registerData.password, saltRounds);
+            this.logger.log(`🔐 Password hashed successfully`);
+            const userData = {
+                name: registerData.name,
+                email: registerData.email,
+                phoneNumber: registerData.phoneNumber,
+                password: hashedPassword,
+                role: registerData.role || 'sales_rep',
+                status: 1,
+                countryId: 1,
+                region_id: 1,
+                route_id: 1,
+                managerType: 0,
+                retailManager: 0,
+                keyChannelManager: 0,
+                distributionManager: 0,
+                visitsTargets: 0,
+                newClients: 0,
+                vapesTargets: 0,
+                pouchesTargets: 0,
+                created_at: new Date(),
+                updated_at: new Date()
+            };
+            const newUser = await this.usersService.create(userData);
+            this.logger.log(`✅ User created successfully: ${newUser.name} (ID: ${newUser.id})`);
+            const payload = {
+                phoneNumber: newUser.phoneNumber,
+                sub: newUser.id,
+                role: newUser.role,
+                countryId: newUser.countryId,
+                regionId: newUser.region_id,
+                routeId: newUser.route_id
+            };
+            const token = this.jwtService.sign(payload);
+            const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+            this.logger.log(`🎫 JWT tokens generated for new user: ${newUser.name}`);
+            const response = {
+                success: true,
+                message: 'User registered successfully',
+                accessToken: token,
+                refreshToken: refreshToken,
+                expiresIn: 32400,
+                salesRep: {
+                    id: newUser.id,
+                    name: newUser.name,
+                    email: newUser.email,
+                    phone: newUser.phoneNumber,
+                    role: newUser.role,
+                    countryId: newUser.countryId,
+                    regionId: newUser.region_id,
+                    routeId: newUser.route_id,
+                    status: newUser.status,
+                    photoUrl: newUser.photoUrl
+                }
+            };
+            this.logger.log(`📤 Registration response prepared for user: ${newUser.name}`);
+            return response;
+        }
+        catch (error) {
+            this.logger.error(`💥 Registration error for phone: ${registerData.phoneNumber}`, error.stack);
+            throw error;
         }
     }
 };

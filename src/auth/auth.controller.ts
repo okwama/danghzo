@@ -3,12 +3,32 @@ import { AuthService } from './auth.service';
 //  import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
   constructor(private authService: AuthService) {}
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  async register(@Body() registerDto: RegisterDto) {
+    this.logger.log('📝 Registration attempt received');
+    this.logger.log(`📱 Phone Number: ${registerDto.phoneNumber}`);
+    this.logger.log(`📧 Email: ${registerDto.email}`);
+    this.logger.log(`👤 Name: ${registerDto.name}`);
+    this.logger.log(`📦 Full payload: ${JSON.stringify(registerDto, null, 2)}`);
+    
+    try {
+      const result = await this.authService.register(registerDto);
+      this.logger.log(`✅ Registration successful for user: ${registerDto.name}`);
+      return result;
+    } catch (error) {
+      this.logger.error(`💥 Registration error for phone: ${registerDto.phoneNumber}`, error.stack);
+      throw error;
+    }
+  }
 
   @Post('login')
   @HttpCode(HttpStatus.OK) // Explicitly return 200 status code
