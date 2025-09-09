@@ -14,9 +14,11 @@ const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
 const auth_controller_1 = require("./auth.controller");
 const auth_service_1 = require("./auth.service");
+const client_auth_service_1 = require("./client-auth.service");
 const jwt_strategy_1 = require("./strategies/jwt.strategy");
 const local_strategy_1 = require("./strategies/local.strategy");
 const user_entity_1 = require("../users/entities/user.entity");
+const clients_entity_1 = require("../entities/clients.entity");
 const users_module_1 = require("../users/users.module");
 let AuthModule = class AuthModule {
 };
@@ -25,7 +27,7 @@ exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
             users_module_1.UsersModule,
-            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User]),
+            typeorm_1.TypeOrmModule.forFeature([user_entity_1.User, clients_entity_1.Clients]),
             passport_1.PassportModule,
             jwt_1.JwtModule.registerAsync({
                 imports: [config_1.ConfigModule],
@@ -39,7 +41,7 @@ exports.AuthModule = AuthModule = __decorate([
             }),
         ],
         controllers: [auth_controller_1.AuthController],
-        providers: [auth_service_1.AuthService, jwt_strategy_1.JwtStrategy, local_strategy_1.LocalStrategy],
+        providers: [auth_service_1.AuthService, client_auth_service_1.ClientAuthService, jwt_strategy_1.JwtStrategy, local_strategy_1.LocalStrategy],
         exports: [auth_service_1.AuthService],
     })
 ], AuthModule);

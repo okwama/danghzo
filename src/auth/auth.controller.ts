@@ -39,20 +39,45 @@ export class AuthController {
     this.logger.log(`📦 Full payload: ${JSON.stringify(loginDto, null, 2)}`);
     
     try {
-      const user = await this.authService.validateUser(loginDto.phoneNumber, loginDto.password);
+      const user = await this.authService.authenticateUser(loginDto.phoneNumber, loginDto.password);
       if (!user) {
-        this.logger.warn(`❌ Login failed for phone: ${loginDto.phoneNumber} - Invalid credentials`);
+        this.logger.warn(`❌ Login failed for identifier: ${loginDto.phoneNumber} - Invalid credentials`);
         throw new UnauthorizedException('Invalid credentials');
       }
       
-      this.logger.log(`✅ Login successful for user: ${user.name} (ID: ${user.id})`);
+      this.logger.log(`✅ Login successful for ${user.userType}: ${user.name} (ID: ${user.id})`);
       const result = await this.authService.login(user);
-      this.logger.log(`🎫 JWT token generated for user: ${user.name}`);
+      this.logger.log(`🎫 JWT token generated for ${user.userType}: ${user.name}`);
       
       // Return 200 status code instead of 201
       return result;
     } catch (error) {
-      this.logger.error(`💥 Login error for phone: ${loginDto.phoneNumber}`, error.stack);
+      this.logger.error(`💥 Login error for identifier: ${loginDto.phoneNumber}`, error.stack);
+      throw error;
+    }
+  }
+
+  @Post('client-login')
+  @HttpCode(HttpStatus.OK)
+  async clientLogin(@Body() loginDto: LoginDto) {
+    this.logger.log('🔐 Client login attempt received');
+    this.logger.log(`📧 Email/Name: ${loginDto.phoneNumber}`); // Reusing phoneNumber field for identifier
+    this.logger.log(`🔑 Password: ${loginDto.password ? '[PROVIDED]' : '[MISSING]'}`);
+    
+    try {
+      const client = await this.authService.validateClient(loginDto.phoneNumber, loginDto.password);
+      if (!client) {
+        this.logger.warn(`❌ Client login failed for identifier: ${loginDto.phoneNumber} - Invalid credentials`);
+        throw new UnauthorizedException('Invalid credentials');
+      }
+      
+      this.logger.log(`✅ Client login successful: ${client.name} (ID: ${client.id})`);
+      const result = await this.authService.login(client);
+      this.logger.log(`🎫 JWT token generated for client: ${client.name}`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error(`💥 Client login error for identifier: ${loginDto.phoneNumber}`, error.stack);
       throw error;
     }
   }

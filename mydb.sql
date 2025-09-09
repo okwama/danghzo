@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 08, 2025 at 09:50 AM
+-- Generation Time: Sep 09, 2025 at 05:46 PM
 -- Server version: 10.6.23-MariaDB-cll-lve
 -- PHP Version: 8.4.10
 
@@ -293,6 +293,7 @@ CREATE TABLE `ClientAssignment` (
 CREATE TABLE `Clients` (
   `id` int(11) NOT NULL,
   `name` varchar(191) NOT NULL,
+  `password` varchar(11) DEFAULT NULL,
   `address` varchar(191) DEFAULT NULL,
   `latitude` double DEFAULT NULL,
   `longitude` double DEFAULT NULL,

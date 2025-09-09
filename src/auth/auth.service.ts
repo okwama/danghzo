@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, Logger, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
+import { ClientAuthService } from './client-auth.service';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -9,26 +10,30 @@ export class AuthService {
 
   constructor(
     private usersService: UsersService,
+    private clientAuthService: ClientAuthService,
     private jwtService: JwtService,
   ) {}
 
+  /**
+   * Validate SalesRep user (existing method)
+   */
   async validateUser(phoneNumber: string, password: string): Promise<any> {
-    this.logger.log(`🔍 Validating user with phone: ${phoneNumber}`);
+    this.logger.log(`🔍 Validating SalesRep with phone: ${phoneNumber}`);
     
     const user = await this.usersService.findByPhoneNumber(phoneNumber);
     if (!user) {
-      this.logger.warn(`❌ User not found for phone: ${phoneNumber}`);
+      this.logger.warn(`❌ SalesRep not found for phone: ${phoneNumber}`);
       return null;
     }
     
-    this.logger.log(`👤 User found: ${user.name} (ID: ${user.id}, Status: ${user.status})`);
+    this.logger.log(`👤 SalesRep found: ${user.name} (ID: ${user.id}, Status: ${user.status})`);
     
     if (user.status !== 1) {
       if (user.status === 0) {
-        this.logger.warn(`❌ User ${user.name} account is pending approval (status: ${user.status})`);
+        this.logger.warn(`❌ SalesRep ${user.name} account is pending approval (status: ${user.status})`);
         throw new UnauthorizedException('Your account is pending approval. Please wait for admin approval before logging in.');
       } else {
-        this.logger.warn(`❌ User ${user.name} is inactive (status: ${user.status})`);
+        this.logger.warn(`❌ SalesRep ${user.name} is inactive (status: ${user.status})`);
         throw new UnauthorizedException('Your account is inactive. Please contact support.');
       }
     }
@@ -38,12 +43,64 @@ export class AuthService {
     
     if (isValidPassword) {
       const { password, ...result } = user;
-      this.logger.log(`✅ User ${user.name} validated successfully`);
+      // Add user type to result
+      (result as any).userType = 'salesRep';
+      this.logger.log(`✅ SalesRep ${user.name} validated successfully`);
       return result;
     }
     
-    this.logger.warn(`❌ Invalid password for user: ${user.name}`);
+    this.logger.warn(`❌ Invalid password for SalesRep: ${user.name}`);
     return null;
+  }
+
+  /**
+   * Validate Client user (new method)
+   */
+  async validateClient(identifier: string, password: string): Promise<any> {
+    this.logger.log(`🔍 Validating Client with identifier: ${identifier}`);
+    
+    const client = await this.clientAuthService.validateClient(identifier, password);
+    if (!client) {
+      this.logger.warn(`❌ Client not found for identifier: ${identifier}`);
+      return null;
+    }
+    
+    // Add user type to result
+    const result = { ...client, userType: 'client' };
+    this.logger.log(`✅ Client ${client.name} validated successfully`);
+    return result;
+  }
+
+  /**
+   * Universal authentication method - tries both SalesRep and Client
+   */
+  async authenticateUser(identifier: string, password: string): Promise<any> {
+    this.logger.log(`🔍 Universal authentication for identifier: ${identifier}`);
+    
+    // First try SalesRep authentication
+    try {
+      const salesRep = await this.validateUser(identifier, password);
+      if (salesRep) {
+        this.logger.log(`✅ SalesRep authentication successful for: ${identifier}`);
+        return salesRep;
+      }
+    } catch (error) {
+      this.logger.debug(`SalesRep authentication failed for ${identifier}: ${error.message}`);
+    }
+    
+    // Then try Client authentication
+    try {
+      const client = await this.validateClient(identifier, password);
+      if (client) {
+        this.logger.log(`✅ Client authentication successful for: ${identifier}`);
+        return client;
+      }
+    } catch (error) {
+      this.logger.debug(`Client authentication failed for ${identifier}: ${error.message}`);
+    }
+    
+    this.logger.warn(`❌ No valid user found for identifier: ${identifier}`);
+    throw new UnauthorizedException('Invalid credentials');
   }
 
   async login(user: any) {
@@ -53,6 +110,7 @@ export class AuthService {
       phoneNumber: user.phoneNumber, 
       sub: user.id,
       role: user.role,
+      userType: user.userType, // NEW: Include user type
       countryId: user.countryId,
       regionId: user.region_id,
       routeId: user.route_id

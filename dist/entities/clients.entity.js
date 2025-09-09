@@ -15,7 +15,11 @@ const journey_plan_entity_1 = require("../journey-plans/entities/journey-plan.en
 const uplift_sale_entity_1 = require("./uplift-sale.entity");
 const sales_rep_entity_1 = require("./sales-rep.entity");
 const client_assignment_entity_1 = require("./client-assignment.entity");
+const bcrypt = require("bcryptjs");
 let Clients = class Clients {
+    async validatePassword(password) {
+        return bcrypt.compare(password, this.password);
+    }
 };
 exports.Clients = Clients;
 __decorate([
@@ -26,6 +30,10 @@ __decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], Clients.prototype, "name", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Clients.prototype, "password", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

@@ -5,6 +5,7 @@ import { ClientAssignment } from './client-assignment.entity';
 export declare class Clients {
     id: number;
     name: string;
+    password: string;
     address: string;
     latitude: number;
     longitude: number;
@@ -31,4 +32,5 @@ export declare class Clients {
     journeyPlans: JourneyPlan[];
     upliftSales: UpliftSale[];
     assignments: ClientAssignment[];
+    validatePassword(password: string): Promise<boolean>;
 }

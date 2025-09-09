@@ -3,6 +3,7 @@ import { JourneyPlan } from '../journey-plans/entities/journey-plan.entity';
 import { UpliftSale } from './uplift-sale.entity';
 import { SalesRep } from './sales-rep.entity';
 import { ClientAssignment } from './client-assignment.entity';
+import * as bcrypt from 'bcryptjs';
 
 @Entity('Clients')
 @Index('Clients_countryId_fkey', ['countryId'])
@@ -13,6 +14,9 @@ export class Clients {
 
   @Column()
   name: string;
+
+  @Column({ nullable: true })
+  password: string;
 
   @Column({ nullable: true })
   address: string;
@@ -92,4 +96,8 @@ export class Clients {
 
   @OneToMany(() => ClientAssignment, assignment => assignment.client)
   assignments: ClientAssignment[];
+
+  async validatePassword(password: string): Promise<boolean> {
+    return bcrypt.compare(password, this.password);
+  }
 } 

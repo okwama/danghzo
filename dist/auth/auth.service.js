@@ -14,28 +14,30 @@ exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_1 = require("@nestjs/jwt");
 const users_service_1 = require("../users/users.service");
+const client_auth_service_1 = require("./client-auth.service");
 const bcrypt = require("bcryptjs");
 let AuthService = AuthService_1 = class AuthService {
-    constructor(usersService, jwtService) {
+    constructor(usersService, clientAuthService, jwtService) {
         this.usersService = usersService;
+        this.clientAuthService = clientAuthService;
         this.jwtService = jwtService;
         this.logger = new common_1.Logger(AuthService_1.name);
     }
     async validateUser(phoneNumber, password) {
-        this.logger.log(`🔍 Validating user with phone: ${phoneNumber}`);
+        this.logger.log(`🔍 Validating SalesRep with phone: ${phoneNumber}`);
         const user = await this.usersService.findByPhoneNumber(phoneNumber);
         if (!user) {
-            this.logger.warn(`❌ User not found for phone: ${phoneNumber}`);
+            this.logger.warn(`❌ SalesRep not found for phone: ${phoneNumber}`);
             return null;
         }
-        this.logger.log(`👤 User found: ${user.name} (ID: ${user.id}, Status: ${user.status})`);
+        this.logger.log(`👤 SalesRep found: ${user.name} (ID: ${user.id}, Status: ${user.status})`);
         if (user.status !== 1) {
             if (user.status === 0) {
-                this.logger.warn(`❌ User ${user.name} account is pending approval (status: ${user.status})`);
+                this.logger.warn(`❌ SalesRep ${user.name} account is pending approval (status: ${user.status})`);
                 throw new common_1.UnauthorizedException('Your account is pending approval. Please wait for admin approval before logging in.');
             }
             else {
-                this.logger.warn(`❌ User ${user.name} is inactive (status: ${user.status})`);
+                this.logger.warn(`❌ SalesRep ${user.name} is inactive (status: ${user.status})`);
                 throw new common_1.UnauthorizedException('Your account is inactive. Please contact support.');
             }
         }
@@ -43,11 +45,48 @@ let AuthService = AuthService_1 = class AuthService {
         this.logger.log(`🔐 Password validation for ${user.name}: ${isValidPassword ? '✅ Valid' : '❌ Invalid'}`);
         if (isValidPassword) {
             const { password, ...result } = user;
-            this.logger.log(`✅ User ${user.name} validated successfully`);
+            result.userType = 'salesRep';
+            this.logger.log(`✅ SalesRep ${user.name} validated successfully`);
             return result;
         }
-        this.logger.warn(`❌ Invalid password for user: ${user.name}`);
+        this.logger.warn(`❌ Invalid password for SalesRep: ${user.name}`);
         return null;
+    }
+    async validateClient(identifier, password) {
+        this.logger.log(`🔍 Validating Client with identifier: ${identifier}`);
+        const client = await this.clientAuthService.validateClient(identifier, password);
+        if (!client) {
+            this.logger.warn(`❌ Client not found for identifier: ${identifier}`);
+            return null;
+        }
+        const result = { ...client, userType: 'client' };
+        this.logger.log(`✅ Client ${client.name} validated successfully`);
+        return result;
+    }
+    async authenticateUser(identifier, password) {
+        this.logger.log(`🔍 Universal authentication for identifier: ${identifier}`);
+        try {
+            const salesRep = await this.validateUser(identifier, password);
+            if (salesRep) {
+                this.logger.log(`✅ SalesRep authentication successful for: ${identifier}`);
+                return salesRep;
+            }
+        }
+        catch (error) {
+            this.logger.debug(`SalesRep authentication failed for ${identifier}: ${error.message}`);
+        }
+        try {
+            const client = await this.validateClient(identifier, password);
+            if (client) {
+                this.logger.log(`✅ Client authentication successful for: ${identifier}`);
+                return client;
+            }
+        }
+        catch (error) {
+            this.logger.debug(`Client authentication failed for ${identifier}: ${error.message}`);
+        }
+        this.logger.warn(`❌ No valid user found for identifier: ${identifier}`);
+        throw new common_1.UnauthorizedException('Invalid credentials');
     }
     async login(user) {
         this.logger.log(`🎫 Generating JWT token for user: ${user.name}`);
@@ -55,6 +94,7 @@ let AuthService = AuthService_1 = class AuthService {
             phoneNumber: user.phoneNumber,
             sub: user.id,
             role: user.role,
+            userType: user.userType,
             countryId: user.countryId,
             regionId: user.region_id,
             routeId: user.route_id
@@ -233,6 +273,7 @@ exports.AuthService = AuthService;
 exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [users_service_1.UsersService,
+        client_auth_service_1.ClientAuthService,
         jwt_1.JwtService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

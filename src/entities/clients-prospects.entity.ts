@@ -81,3 +81,4 @@ export class ClientsProspects {
   @Column({ type: 'timestamp', nullable: true, default: () => 'CURRENT_TIMESTAMP' })
   created_at: Date;
 }
+

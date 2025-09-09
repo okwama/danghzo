@@ -17,9 +17,11 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const uplift_sale_entity_1 = require("../entities/uplift-sale.entity");
+const uplift_sale_item_entity_1 = require("../entities/uplift-sale-item.entity");
 let UpliftSalesService = class UpliftSalesService {
-    constructor(upliftSaleRepository) {
+    constructor(upliftSaleRepository, upliftSaleItemRepository) {
         this.upliftSaleRepository = upliftSaleRepository;
+        this.upliftSaleItemRepository = upliftSaleItemRepository;
     }
     async findAll(query) {
         try {
@@ -58,11 +60,33 @@ let UpliftSalesService = class UpliftSalesService {
             throw new Error('Failed to fetch uplift sale');
         }
     }
-    async create(createUpliftSaleDto) {
+    async create(createUpliftSaleDto, userId) {
         try {
-            const upliftSale = this.upliftSaleRepository.create(createUpliftSaleDto);
-            const result = await this.upliftSaleRepository.save(upliftSale);
-            return Array.isArray(result) ? result[0] : result;
+            console.log('🔍 UpliftSalesService: Received create request:', JSON.stringify(createUpliftSaleDto, null, 2));
+            console.log('🔍 UpliftSalesService: UserId from JWT:', userId);
+            const { upliftSaleItems, ...upliftSaleData } = createUpliftSaleDto;
+            const upliftSaleWithUser = { ...upliftSaleData, userId };
+            console.log('🔍 UpliftSalesService: Extracted items:', JSON.stringify(upliftSaleItems, null, 2));
+            console.log('🔍 UpliftSalesService: Final uplift sale data:', JSON.stringify(upliftSaleWithUser, null, 2));
+            const upliftSale = this.upliftSaleRepository.create(upliftSaleWithUser);
+            const savedUpliftSale = await this.upliftSaleRepository.save(upliftSale);
+            console.log('✅ UpliftSalesService: Created main uplift sale with ID:', savedUpliftSale.id);
+            if (upliftSaleItems && upliftSaleItems.length > 0) {
+                const items = [];
+                for (const item of upliftSaleItems) {
+                    const upliftSaleItem = this.upliftSaleItemRepository.create({
+                        ...item,
+                        upliftSaleId: savedUpliftSale.id,
+                    });
+                    items.push(upliftSaleItem);
+                }
+                const savedItems = await this.upliftSaleItemRepository.save(items);
+                console.log('✅ UpliftSalesService: Created ${savedItems.length} uplift sale items');
+                const totalAmount = savedItems.reduce((sum, item) => sum + item.total, 0);
+                await this.upliftSaleRepository.update(savedUpliftSale.id, { totalAmount });
+                console.log('✅ UpliftSalesService: Updated total amount to:', totalAmount);
+            }
+            return this.findOne(savedUpliftSale.id);
         }
         catch (error) {
             console.error('Error creating uplift sale:', error);
@@ -71,7 +95,22 @@ let UpliftSalesService = class UpliftSalesService {
     }
     async update(id, updateUpliftSaleDto) {
         try {
-            await this.upliftSaleRepository.update(id, updateUpliftSaleDto);
+            const { upliftSaleItems, ...upliftSaleData } = updateUpliftSaleDto;
+            await this.upliftSaleRepository.update(id, upliftSaleData);
+            if (upliftSaleItems && upliftSaleItems.length > 0) {
+                await this.upliftSaleItemRepository.delete({ upliftSaleId: id });
+                const items = [];
+                for (const item of upliftSaleItems) {
+                    const upliftSaleItem = this.upliftSaleItemRepository.create({
+                        ...item,
+                        upliftSaleId: id,
+                    });
+                    items.push(upliftSaleItem);
+                }
+                const savedItems = await this.upliftSaleItemRepository.save(items);
+                const totalAmount = savedItems.reduce((sum, item) => sum + item.total, 0);
+                await this.upliftSaleRepository.update(id, { totalAmount });
+            }
             return this.findOne(id);
         }
         catch (error) {
@@ -94,6 +133,8 @@ exports.UpliftSalesService = UpliftSalesService;
 exports.UpliftSalesService = UpliftSalesService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(uplift_sale_entity_1.UpliftSale)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __param(1, (0, typeorm_1.InjectRepository)(uplift_sale_item_entity_1.UpliftSaleItem)),
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository])
 ], UpliftSalesService);
 //# sourceMappingURL=uplift-sales.service.js.map

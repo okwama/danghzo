@@ -2,12 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UpliftSale } from '../entities/uplift-sale.entity';
+import { UpliftSaleItem } from '../entities/uplift-sale-item.entity';
+import { CreateUpliftSaleDto } from './dto/create-uplift-sale.dto';
+import { UpdateUpliftSaleDto } from './dto/update-uplift-sale.dto';
 
 @Injectable()
 export class UpliftSalesService {
   constructor(
     @InjectRepository(UpliftSale)
     private upliftSaleRepository: Repository<UpliftSale>,
+    @InjectRepository(UpliftSaleItem)
+    private upliftSaleItemRepository: Repository<UpliftSaleItem>,
   ) {}
 
   async findAll(query: any) {
@@ -52,20 +57,84 @@ export class UpliftSalesService {
     }
   }
 
-  async create(createUpliftSaleDto: any) {
+  async create(createUpliftSaleDto: CreateUpliftSaleDto, userId: number) {
     try {
-      const upliftSale = this.upliftSaleRepository.create(createUpliftSaleDto);
-      const result = await this.upliftSaleRepository.save(upliftSale);
-      return Array.isArray(result) ? result[0] : result;
+      console.log('🔍 UpliftSalesService: Received create request:', JSON.stringify(createUpliftSaleDto, null, 2));
+      console.log('🔍 UpliftSalesService: UserId from JWT:', userId);
+      
+      // Extract items from the DTO and add userId
+      const { upliftSaleItems, ...upliftSaleData } = createUpliftSaleDto;
+      const upliftSaleWithUser = { ...upliftSaleData, userId };
+      
+      console.log('🔍 UpliftSalesService: Extracted items:', JSON.stringify(upliftSaleItems, null, 2));
+      console.log('🔍 UpliftSalesService: Final uplift sale data:', JSON.stringify(upliftSaleWithUser, null, 2));
+      
+      // Create the main uplift sale record
+      const upliftSale = this.upliftSaleRepository.create(upliftSaleWithUser);
+      const savedUpliftSale = await this.upliftSaleRepository.save(upliftSale);
+      
+      console.log('✅ UpliftSalesService: Created main uplift sale with ID:', savedUpliftSale.id);
+      
+      // Create uplift sale items if they exist
+      if (upliftSaleItems && upliftSaleItems.length > 0) {
+        const items: any[] = [];
+        for (const item of upliftSaleItems) {
+          const upliftSaleItem = this.upliftSaleItemRepository.create({
+            ...item,
+            upliftSaleId: savedUpliftSale.id,
+          });
+          items.push(upliftSaleItem);
+        }
+        
+        const savedItems = await this.upliftSaleItemRepository.save(items);
+        
+        console.log('✅ UpliftSalesService: Created ${savedItems.length} uplift sale items');
+        
+        // Update total amount based on items
+        const totalAmount = savedItems.reduce((sum, item) => sum + item.total, 0);
+        await this.upliftSaleRepository.update(savedUpliftSale.id, { totalAmount });
+        
+        console.log('✅ UpliftSalesService: Updated total amount to:', totalAmount);
+      }
+      
+      // Return the complete uplift sale with items
+      return this.findOne(savedUpliftSale.id);
     } catch (error) {
       console.error('Error creating uplift sale:', error);
       throw new Error('Failed to create uplift sale');
     }
   }
 
-  async update(id: number, updateUpliftSaleDto: any) {
+  async update(id: number, updateUpliftSaleDto: UpdateUpliftSaleDto) {
     try {
-      await this.upliftSaleRepository.update(id, updateUpliftSaleDto);
+      // Extract items from the DTO
+      const { upliftSaleItems, ...upliftSaleData } = updateUpliftSaleDto;
+      
+      // Update the main uplift sale record
+      await this.upliftSaleRepository.update(id, upliftSaleData);
+      
+      // Handle items if they exist
+      if (upliftSaleItems && upliftSaleItems.length > 0) {
+        // Delete existing items
+        await this.upliftSaleItemRepository.delete({ upliftSaleId: id });
+        
+        // Create new items
+        const items: any[] = [];
+        for (const item of upliftSaleItems) {
+          const upliftSaleItem = this.upliftSaleItemRepository.create({
+            ...item,
+            upliftSaleId: id,
+          });
+          items.push(upliftSaleItem);
+        }
+        
+        const savedItems = await this.upliftSaleItemRepository.save(items);
+        
+        // Update total amount based on items
+        const totalAmount = savedItems.reduce((sum, item) => sum + item.total, 0);
+        await this.upliftSaleRepository.update(id, { totalAmount });
+      }
+      
       return this.findOne(id);
     } catch (error) {
       console.error('Error updating uplift sale:', error);

@@ -17,7 +17,9 @@ exports.LoginDto = LoginDto;
 __decorate([
     (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsNotEmpty)(),
-    (0, class_validator_1.Matches)(/^[0-9+\-\s()]+$/, { message: 'Phone number must contain only digits, spaces, hyphens, parentheses, and plus signs' }),
+    (0, class_validator_1.Matches)(/^([0-9+\-\s()]+|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/, {
+        message: 'Must be a valid phone number or email address'
+    }),
     __metadata("design:type", String)
 ], LoginDto.prototype, "phoneNumber", void 0);
 __decorate([
