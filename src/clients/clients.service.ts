@@ -54,11 +54,25 @@ export class ClientsService {
 
         if (assignments.length > 0) {
           this.logger.debug(`✅ User ${userId} has ${assignments.length} assigned clients:`);
-          assignments.forEach(assignment => {
-            this.logger.debug(`   - ${assignment.client.name} (ID: ${assignment.client.id})`);
+          
+          // Filter out assignments with null clients and log warnings
+          const validAssignments = assignments.filter(assignment => {
+            if (!assignment.client) {
+              this.logger.warn(`⚠️ Found orphaned assignment ${assignment.id} for user ${userId} - client is null`);
+              return false;
+            }
+            return true;
           });
-          // User has assigned clients - return only assigned clients
-          return assignments.map(assignment => assignment.client);
+
+          if (validAssignments.length > 0) {
+            validAssignments.forEach(assignment => {
+              this.logger.debug(`   - ${assignment.client.name} (ID: ${assignment.client.id})`);
+            });
+            // User has assigned clients - return only assigned clients
+            return validAssignments.map(assignment => assignment.client);
+          } else {
+            this.logger.warn(`❌ All assignments for user ${userId} have null clients, returning all clients`);
+          }
         } else {
           this.logger.debug(`❌ No active assignment found for user ${userId}, returning all clients`);
         }
