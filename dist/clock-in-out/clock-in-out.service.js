@@ -32,6 +32,33 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
             const todayStr = nairobiTime.toISOString().slice(0, 10);
             this.logger.log(`📅 Clock-in checking for today's session: ${todayStr} (Nairobi time)`);
+            try {
+                const staleActiveSessions = await this.loginHistoryRepository
+                    .createQueryBuilder('session')
+                    .where('session.userId = :userId', { userId })
+                    .andWhere('session.status = :status', { status: 1 })
+                    .andWhere('DATE(session.sessionStart) < :today', { today: todayStr })
+                    .orderBy('session.sessionStart', 'ASC')
+                    .getMany();
+                if (staleActiveSessions.length > 0) {
+                    this.logger.warn(`⚠️ Found ${staleActiveSessions.length} previous-day active session(s) for user ${userId}. Auto-closing.`);
+                    for (const session of staleActiveSessions) {
+                        const startTime = new Date(session.sessionStart);
+                        const endTime = new Date(startTime);
+                        endTime.setHours(18, 0, 0, 0);
+                        const durationMinutes = Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60)));
+                        await this.loginHistoryRepository.update(session.id, {
+                            status: 2,
+                            sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
+                            duration: durationMinutes,
+                        });
+                    }
+                    this.logger.log(`✅ Auto-closed previous-day active sessions for user ${userId}`);
+                }
+            }
+            catch (cleanupError) {
+                this.logger.error(`❌ Failed to cleanup previous-day sessions for user ${userId}: ${cleanupError.message}`);
+            }
             const activeSession = await this.loginHistoryRepository
                 .createQueryBuilder('session')
                 .where('session.userId = :userId', { userId })

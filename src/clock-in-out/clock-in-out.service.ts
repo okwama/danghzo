@@ -30,6 +30,37 @@ export class ClockInOutService {
       const todayStr = nairobiTime.toISOString().slice(0, 10); // YYYY-MM-DD format
       
       this.logger.log(`📅 Clock-in checking for today's session: ${todayStr} (Nairobi time)`);
+
+      // Safety: Auto-close any previous-day active sessions before proceeding
+      try {
+        const staleActiveSessions = await this.loginHistoryRepository
+          .createQueryBuilder('session')
+          .where('session.userId = :userId', { userId })
+          .andWhere('session.status = :status', { status: 1 })
+          .andWhere('DATE(session.sessionStart) < :today', { today: todayStr })
+          .orderBy('session.sessionStart', 'ASC')
+          .getMany();
+
+        if (staleActiveSessions.length > 0) {
+          this.logger.warn(`⚠️ Found ${staleActiveSessions.length} previous-day active session(s) for user ${userId}. Auto-closing.`);
+          for (const session of staleActiveSessions) {
+            const startTime = new Date(session.sessionStart);
+            const endTime = new Date(startTime);
+            endTime.setHours(18, 0, 0, 0); // 6:00 PM of that day
+            const durationMinutes = Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60)));
+
+            await this.loginHistoryRepository.update(session.id, {
+              status: 2,
+              sessionEnd: endTime.toISOString().slice(0, 19).replace('T', ' '),
+              duration: durationMinutes,
+            });
+          }
+          this.logger.log(`✅ Auto-closed previous-day active sessions for user ${userId}`);
+        }
+      } catch (cleanupError) {
+        this.logger.error(`❌ Failed to cleanup previous-day sessions for user ${userId}: ${cleanupError.message}`);
+        // Continue clock-in even if cleanup fails
+      }
       
       const activeSession = await this.loginHistoryRepository
         .createQueryBuilder('session')
