@@ -44,7 +44,7 @@ export class ClockInOutService {
         if (staleActiveSessions.length > 0) {
           this.logger.warn(`⚠️ Found ${staleActiveSessions.length} previous-day active session(s) for user ${userId}. Auto-closing.`);
           for (const session of staleActiveSessions) {
-            const startTime = new Date(session.sessionStart);
+            const startTime = this.parseNairobiTime(session.sessionStart);
             const endTime = new Date(startTime);
             endTime.setHours(18, 0, 0, 0); // 6:00 PM of that day
             const durationMinutes = Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60)));
@@ -105,12 +105,11 @@ export class ClockInOutService {
         };
       }
 
-      // Create new session for today
-      const formattedTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
+      // Create new session for today - store the time as-is since client already sends Nairobi time
       const newSession = this.loginHistoryRepository.create({
         userId,
         status: 1, // Active
-        sessionStart: formattedTime,
+        sessionStart: clientTime, // Store client time directly (already in Nairobi time)
         timezone: 'Africa/Nairobi',
         duration: 0, // Will be calculated on clock out
       });
@@ -169,15 +168,15 @@ export class ClockInOutService {
       this.logger.log(`✅ ClockOut: Found active session ${activeSession.id} for user ${userId}`);
 
       // Calculate duration from original start time to current end time
-      const startTime = new Date(activeSession.sessionStart);
-      const endTime = new Date(clientTime);
+      const startTime = this.parseNairobiTime(activeSession.sessionStart);
+      const endTime = this.parseNairobiTime(clientTime);
       const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
 
       // Validate duration (max 8 hours = 480 minutes)
       const validatedDuration = Math.min(durationMinutes, 480);
       
       // If duration exceeds 8 hours, cap the end time to 6:00 PM of the start day
-      let finalEndTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
+      let finalEndTime = clientTime; // Store client time directly (already in Nairobi time)
       if (durationMinutes > 480) {
         const cappedEndTime = new Date(startTime);
         cappedEndTime.setHours(18, 0, 0, 0); // 6:00 PM
@@ -247,7 +246,7 @@ export class ClockInOutService {
       }
 
       // Calculate current duration
-      const startTime = new Date(activeSession.sessionStart);
+      const startTime = this.parseNairobiTime(activeSession.sessionStart);
       const currentTime = new Date();
       const currentDuration = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
 
@@ -596,6 +595,19 @@ export class ClockInOutService {
     }
   }
 
+  /**
+   * Parse Nairobi time consistently - ensures timezone is handled correctly
+   */
+  private parseNairobiTime(timeString: string): Date {
+    // If timeString is in the format "YYYY-MM-DD HH:mm:ss", parse it as Nairobi time
+    if (timeString.includes(' ')) {
+      // Since we store times as Nairobi time in the database, parse them as Nairobi time
+      return new Date(timeString.replace(' ', 'T') + '+03:00');
+    }
+    // If it's already in ISO format, parse as is
+    return new Date(timeString);
+  }
+
   // Cleanup methods removed - simplified logic
 
   // getTodaySession method removed - logic moved inline to clockIn method
@@ -626,7 +638,7 @@ export class ClockInOutService {
       let closedCount = 0;
 
       for (const session of activeSessions) {
-        const startTime = new Date(session.sessionStart);
+        const startTime = this.parseNairobiTime(session.sessionStart);
         const endTime = new Date(startTime);
         endTime.setHours(18, 0, 0, 0); // 6:00 PM
         

@@ -43,7 +43,7 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                 if (staleActiveSessions.length > 0) {
                     this.logger.warn(`⚠️ Found ${staleActiveSessions.length} previous-day active session(s) for user ${userId}. Auto-closing.`);
                     for (const session of staleActiveSessions) {
-                        const startTime = new Date(session.sessionStart);
+                        const startTime = this.parseNairobiTime(session.sessionStart);
                         const endTime = new Date(startTime);
                         endTime.setHours(18, 0, 0, 0);
                         const durationMinutes = Math.max(0, Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60)));
@@ -94,11 +94,10 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                     sessionId: todaySession.id,
                 };
             }
-            const formattedTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
             const newSession = this.loginHistoryRepository.create({
                 userId,
                 status: 1,
-                sessionStart: formattedTime,
+                sessionStart: clientTime,
                 timezone: 'Africa/Nairobi',
                 duration: 0,
             });
@@ -142,11 +141,11 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                 };
             }
             this.logger.log(`✅ ClockOut: Found active session ${activeSession.id} for user ${userId}`);
-            const startTime = new Date(activeSession.sessionStart);
-            const endTime = new Date(clientTime);
+            const startTime = this.parseNairobiTime(activeSession.sessionStart);
+            const endTime = this.parseNairobiTime(clientTime);
             const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));
             const validatedDuration = Math.min(durationMinutes, 480);
-            let finalEndTime = new Date(clientTime).toISOString().slice(0, 19).replace('T', ' ');
+            let finalEndTime = clientTime;
             if (durationMinutes > 480) {
                 const cappedEndTime = new Date(startTime);
                 cappedEndTime.setHours(18, 0, 0, 0);
@@ -192,7 +191,7 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
                 this.logger.log(`📊 Returning: { isClockedIn: false }`);
                 return { isClockedIn: false };
             }
-            const startTime = new Date(activeSession.sessionStart);
+            const startTime = this.parseNairobiTime(activeSession.sessionStart);
             const currentTime = new Date();
             const currentDuration = Math.floor((currentTime.getTime() - startTime.getTime()) / (1000 * 60));
             this.logger.log(`📊 User ${userId} has active session for today: ${activeSession.sessionStart}, duration: ${currentDuration} minutes`);
@@ -445,6 +444,12 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             return `${remainingMinutes}m`;
         }
     }
+    parseNairobiTime(timeString) {
+        if (timeString.includes(' ')) {
+            return new Date(timeString.replace(' ', 'T') + '+03:00');
+        }
+        return new Date(timeString);
+    }
     async forceClockOut(userId) {
         try {
             this.logger.log(`🔧 Force clock out requested for user ${userId}`);
@@ -463,7 +468,7 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             }
             let closedCount = 0;
             for (const session of activeSessions) {
-                const startTime = new Date(session.sessionStart);
+                const startTime = this.parseNairobiTime(session.sessionStart);
                 const endTime = new Date(startTime);
                 endTime.setHours(18, 0, 0, 0);
                 const durationMinutes = Math.floor((endTime.getTime() - startTime.getTime()) / (1000 * 60));

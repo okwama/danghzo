@@ -38,6 +38,7 @@ export declare class ClockInOutService {
     private getEmptyStatistics;
     private formatDateTime;
     private formatDuration;
+    private parseNairobiTime;
     forceClockOut(userId: number): Promise<{
         success: boolean;
         message: string;
