@@ -103,4 +103,28 @@ export class ClockInOutController {
   async forceClockOut(@Param('userId') userId: string) {
     return await this.clockInOutService.forceClockOut(parseInt(userId));
   }
+
+  /**
+   * Vercel cron job endpoint for session cleanup
+   */
+  @Post('vercel-cron-cleanup')
+  @HttpCode(HttpStatus.OK)
+  async vercelCronCleanup() {
+    return await this.clockOutSchedulerService.executeVercelCronJob();
+  }
+
+  /**
+   * Health check for cron job
+   */
+  @Get('cron-health')
+  async cronHealthCheck() {
+    const activeSessionsCount = await this.clockOutSchedulerService.getActiveSessionsCount();
+    return {
+      status: 'ok',
+      service: 'session-cleanup-cron',
+      activeSessions: activeSessionsCount,
+      timestamp: new Date().toISOString(),
+      timezone: 'Africa/Nairobi'
+    };
+  }
 } 

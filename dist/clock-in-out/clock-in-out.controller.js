@@ -50,6 +50,19 @@ let ClockInOutController = class ClockInOutController {
     async forceClockOut(userId) {
         return await this.clockInOutService.forceClockOut(parseInt(userId));
     }
+    async vercelCronCleanup() {
+        return await this.clockOutSchedulerService.executeVercelCronJob();
+    }
+    async cronHealthCheck() {
+        const activeSessionsCount = await this.clockOutSchedulerService.getActiveSessionsCount();
+        return {
+            status: 'ok',
+            service: 'session-cleanup-cron',
+            activeSessions: activeSessionsCount,
+            timestamp: new Date().toISOString(),
+            timezone: 'Africa/Nairobi'
+        };
+    }
 };
 exports.ClockInOutController = ClockInOutController;
 __decorate([
@@ -114,6 +127,19 @@ __decorate([
     __metadata("design:paramtypes", [String]),
     __metadata("design:returntype", Promise)
 ], ClockInOutController.prototype, "forceClockOut", null);
+__decorate([
+    (0, common_1.Post)('vercel-cron-cleanup'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ClockInOutController.prototype, "vercelCronCleanup", null);
+__decorate([
+    (0, common_1.Get)('cron-health'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], ClockInOutController.prototype, "cronHealthCheck", null);
 exports.ClockInOutController = ClockInOutController = __decorate([
     (0, common_1.Controller)('clock-in-out'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, DataSource } from 'typeorm';
 import { FeedbackReport } from '../entities/feedback-report.entity';
 import { ProductReport } from '../entities/product-report.entity';
 import { VisibilityReport } from '../entities/visibility-report.entity';
@@ -14,6 +14,7 @@ export class ReportsService {
     private productReportRepository: Repository<ProductReport>,
     @InjectRepository(VisibilityReport)
     private visibilityReportRepository: Repository<VisibilityReport>,
+    private dataSource: DataSource,
   ) {}
 
   async submitReport(reportData: any, authenticatedUserId?: number): Promise<any> {
@@ -112,43 +113,75 @@ export class ReportsService {
           if (Array.isArray(details)) {
             console.log('📋 Processing multiple products:', details.length);
             
-            // Create separate ProductReport records for each product
-            const savedProductReports = [];
-            
-            for (let i = 0; i < details.length; i++) {
-              const productDetail = details[i];
-              console.log(`📋 Processing product ${i + 1}:`, JSON.stringify(productDetail, null, 2));
+            // Try stored procedure first for bulk operations
+            try {
+              console.log('🚀 Attempting bulk insert with stored procedure...');
+              const bulkResult = await this.bulkInsertProductReports(
+                mappedMainData.reportId,
+                mappedMainData.clientId,
+                finalUserId,
+                details
+              );
               
-              // Extract reportId from product detail and exclude it
-              const { reportId: productReportId, ...productDetailsWithoutReportId } = productDetail;
+              console.log('✅ Stored procedure bulk insert successful:', bulkResult);
+              console.log(`✅ Inserted ${bulkResult.inserted_count} product reports`);
               
-              // Combine main data with product details
-              const productDataToSave = {
-                ...mappedMainData,
-                ...productDetailsWithoutReportId,
-                userId: finalUserId // Use userId if provided, otherwise use salesRepId
+              // Return a representative result for backward compatibility
+              return {
+                id: bulkResult.inserted_count > 0 ? 'bulk_' + Date.now() : null,
+                reportId: mappedMainData.reportId,
+                clientId: mappedMainData.clientId,
+                userId: finalUserId,
+                productName: details[0]?.productName || 'Bulk Products',
+                quantity: details[0]?.quantity || 0,
+                comment: `Bulk insert of ${bulkResult.inserted_count} products`,
+                productId: details[0]?.productId || null,
+                createdAt: new Date(),
+                bulkInserted: true,
+                insertedCount: bulkResult.inserted_count
               };
+              
+            } catch (storedProcedureError) {
+              console.log('⚠️ Stored procedure failed, falling back to individual inserts:', storedProcedureError.message);
+              
+              // Fallback to individual inserts
+              const savedProductReports = [];
+              
+              for (let i = 0; i < details.length; i++) {
+                const productDetail = details[i];
+                console.log(`📋 Processing product ${i + 1}:`, JSON.stringify(productDetail, null, 2));
+                
+                // Extract reportId from product detail and exclude it
+                const { reportId: productReportId, ...productDetailsWithoutReportId } = productDetail;
+                
+                // Combine main data with product details
+                const productDataToSave = {
+                  ...mappedMainData,
+                  ...productDetailsWithoutReportId,
+                  userId: finalUserId // Use userId if provided, otherwise use salesRepId
+                };
 
-              console.log(`📋 Creating product report ${i + 1} with data:`, JSON.stringify(productDataToSave, null, 2));
-              const productReport = this.productReportRepository.create(productDataToSave);
-              console.log(`📋 Product report ${i + 1} entity created:`, JSON.stringify(productReport, null, 2));
-              const savedProductReport = await this.productReportRepository.save(productReport);
+                console.log(`📋 Creating product report ${i + 1} with data:`, JSON.stringify(productDataToSave, null, 2));
+                const productReport = this.productReportRepository.create(productDataToSave);
+                console.log(`📋 Product report ${i + 1} entity created:`, JSON.stringify(productReport, null, 2));
+                const savedProductReport = await this.productReportRepository.save(productReport);
+                
+                console.log(`✅ Product report ${i + 1} saved successfully!`);
+                console.log(`✅ Product report ${i + 1} ID:`, (savedProductReport as any).id);
+                console.log(`✅ Product name:`, (savedProductReport as any).productName);
+                console.log(`✅ Product quantity:`, (savedProductReport as any).quantity);
+                console.log(`✅ Product comment:`, (savedProductReport as any).comment);
+                console.log(`✅ Product report ${i + 1} created at:`, (savedProductReport as any).createdAt);
+                
+                savedProductReports.push(savedProductReport);
+              }
               
-              console.log(`✅ Product report ${i + 1} saved successfully!`);
-              console.log(`✅ Product report ${i + 1} ID:`, (savedProductReport as any).id);
-              console.log(`✅ Product name:`, (savedProductReport as any).productName);
-              console.log(`✅ Product quantity:`, (savedProductReport as any).quantity);
-              console.log(`✅ Product comment:`, (savedProductReport as any).comment);
-              console.log(`✅ Product report ${i + 1} created at:`, (savedProductReport as any).createdAt);
+              console.log('📋 ===== FALLBACK MULTIPLE PRODUCT REPORTS CREATION COMPLETE =====');
+              console.log(`✅ Total products saved via fallback: ${savedProductReports.length}`);
               
-              savedProductReports.push(savedProductReport);
+              // Return the first saved report for backward compatibility
+              return savedProductReports[0];
             }
-            
-            console.log('📋 ===== MULTIPLE PRODUCT REPORTS CREATION COMPLETE =====');
-            console.log(`✅ Total products saved: ${savedProductReports.length}`);
-            
-            // Return the first saved report for backward compatibility
-            return savedProductReports[0];
           } else {
             // Single product report (existing logic)
             console.log('📋 Processing single product');
@@ -850,6 +883,83 @@ export class ReportsService {
       console.error('❌ Error details:', JSON.stringify(error, null, 2));
       // Return empty structure instead of throwing to see what's happening
       return {};
+    }
+  }
+
+  /**
+   * Bulk insert product reports using stored procedure
+   * @param journeyPlanId Journey Plan ID (maps to reportId)
+   * @param clientId Client ID
+   * @param userId Sales Rep ID
+   * @param products Array of product data
+   * @returns Result of bulk insert operation
+   */
+  private async bulkInsertProductReports(
+    journeyPlanId: number,
+    clientId: number,
+    userId: number,
+    products: any[]
+  ): Promise<any> {
+    try {
+      console.log('🚀 BulkInsertProductReports: Starting bulk insert');
+      console.log(`🚀 Journey Plan ID: ${journeyPlanId}`);
+      console.log(`🚀 Client ID: ${clientId}`);
+      console.log(`🚀 User ID: ${userId}`);
+      console.log(`🚀 Products count: ${products.length}`);
+      
+      // Validate input parameters
+      if (!journeyPlanId || journeyPlanId <= 0) {
+        throw new Error('Invalid journey plan ID');
+      }
+      
+      if (!clientId || clientId <= 0) {
+        throw new Error('Invalid client ID');
+      }
+      
+      if (!userId || userId <= 0) {
+        throw new Error('Invalid user ID');
+      }
+      
+      if (!products || products.length === 0) {
+        throw new Error('No products provided');
+      }
+      
+      // Convert products array to JSON string for stored procedure
+      const productsJson = JSON.stringify(products);
+      console.log('🚀 Products JSON:', productsJson);
+      
+      // Call stored procedure
+      const result = await this.dataSource.query(
+        'CALL BulkInsertProductReports(?, ?, ?, ?)',
+        [journeyPlanId, clientId, userId, productsJson]
+      );
+      
+      console.log('🚀 Stored procedure result:', result);
+      
+      // Extract result from stored procedure response
+      if (result && result.length > 0 && result[0].length > 0) {
+        const procedureResult = result[0][0];
+        console.log('✅ Stored procedure executed successfully:', procedureResult);
+        
+        if (procedureResult.status === 'SUCCESS') {
+          return {
+            status: 'SUCCESS',
+            message: procedureResult.message,
+            inserted_count: procedureResult.inserted_count,
+            journey_plan_id: procedureResult.journey_plan_id,
+            client_id: procedureResult.client_id,
+            user_id: procedureResult.user_id
+          };
+        } else {
+          throw new Error(`Stored procedure error: ${procedureResult.message}`);
+        }
+      } else {
+        throw new Error('No result returned from stored procedure');
+      }
+      
+    } catch (error) {
+      console.error('❌ BulkInsertProductReports error:', error);
+      throw error;
     }
   }
 }

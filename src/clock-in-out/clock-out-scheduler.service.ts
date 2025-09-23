@@ -87,6 +87,49 @@ export class ClockOutSchedulerService {
     await this.autoClockOutAllUsers();
   }
 
+  // Vercel cron job endpoint method
+  async executeVercelCronJob(): Promise<{ 
+    success: boolean; 
+    message: string; 
+    timestamp: string;
+    affectedSessions?: number;
+    error?: string;
+  }> {
+    try {
+      this.logger.log('🕕 Vercel cron job triggered: Starting session cleanup');
+      
+      // Get count before cleanup
+      const beforeCount = await this.getActiveSessionsCount();
+      this.logger.log(`🔍 Found ${beforeCount} active sessions before cleanup`);
+      
+      // Execute the cleanup
+      await this.autoClockOutAllUsers();
+      
+      // Get count after cleanup
+      const afterCount = await this.getActiveSessionsCount();
+      const affectedSessions = beforeCount - afterCount;
+      
+      this.logger.log(`✅ Vercel cron job completed. Affected ${affectedSessions} sessions`);
+      
+      return {
+        success: true,
+        message: 'Session cleanup completed successfully',
+        timestamp: new Date().toISOString(),
+        affectedSessions: affectedSessions
+      };
+      
+    } catch (error) {
+      this.logger.error('❌ Vercel cron job failed:', error);
+      
+      return {
+        success: false,
+        message: 'Session cleanup failed',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
   // Get count of active sessions
   async getActiveSessionsCount(): Promise<number> {
     return await this.loginHistoryRepository.count({

@@ -20,10 +20,11 @@ const feedback_report_entity_1 = require("../entities/feedback-report.entity");
 const product_report_entity_1 = require("../entities/product-report.entity");
 const visibility_report_entity_1 = require("../entities/visibility-report.entity");
 let ReportsService = class ReportsService {
-    constructor(feedbackReportRepository, productReportRepository, visibilityReportRepository) {
+    constructor(feedbackReportRepository, productReportRepository, visibilityReportRepository, dataSource) {
         this.feedbackReportRepository = feedbackReportRepository;
         this.productReportRepository = productReportRepository;
         this.visibilityReportRepository = visibilityReportRepository;
+        this.dataSource = dataSource;
     }
     async submitReport(reportData, authenticatedUserId) {
         try {
@@ -95,31 +96,53 @@ let ReportsService = class ReportsService {
                     console.log('📋 Mapped main data:', JSON.stringify(mappedMainData, null, 2));
                     if (Array.isArray(details)) {
                         console.log('📋 Processing multiple products:', details.length);
-                        const savedProductReports = [];
-                        for (let i = 0; i < details.length; i++) {
-                            const productDetail = details[i];
-                            console.log(`📋 Processing product ${i + 1}:`, JSON.stringify(productDetail, null, 2));
-                            const { reportId: productReportId, ...productDetailsWithoutReportId } = productDetail;
-                            const productDataToSave = {
-                                ...mappedMainData,
-                                ...productDetailsWithoutReportId,
-                                userId: finalUserId
+                        try {
+                            console.log('🚀 Attempting bulk insert with stored procedure...');
+                            const bulkResult = await this.bulkInsertProductReports(mappedMainData.reportId, mappedMainData.clientId, finalUserId, details);
+                            console.log('✅ Stored procedure bulk insert successful:', bulkResult);
+                            console.log(`✅ Inserted ${bulkResult.inserted_count} product reports`);
+                            return {
+                                id: bulkResult.inserted_count > 0 ? 'bulk_' + Date.now() : null,
+                                reportId: mappedMainData.reportId,
+                                clientId: mappedMainData.clientId,
+                                userId: finalUserId,
+                                productName: details[0]?.productName || 'Bulk Products',
+                                quantity: details[0]?.quantity || 0,
+                                comment: `Bulk insert of ${bulkResult.inserted_count} products`,
+                                productId: details[0]?.productId || null,
+                                createdAt: new Date(),
+                                bulkInserted: true,
+                                insertedCount: bulkResult.inserted_count
                             };
-                            console.log(`📋 Creating product report ${i + 1} with data:`, JSON.stringify(productDataToSave, null, 2));
-                            const productReport = this.productReportRepository.create(productDataToSave);
-                            console.log(`📋 Product report ${i + 1} entity created:`, JSON.stringify(productReport, null, 2));
-                            const savedProductReport = await this.productReportRepository.save(productReport);
-                            console.log(`✅ Product report ${i + 1} saved successfully!`);
-                            console.log(`✅ Product report ${i + 1} ID:`, savedProductReport.id);
-                            console.log(`✅ Product name:`, savedProductReport.productName);
-                            console.log(`✅ Product quantity:`, savedProductReport.quantity);
-                            console.log(`✅ Product comment:`, savedProductReport.comment);
-                            console.log(`✅ Product report ${i + 1} created at:`, savedProductReport.createdAt);
-                            savedProductReports.push(savedProductReport);
                         }
-                        console.log('📋 ===== MULTIPLE PRODUCT REPORTS CREATION COMPLETE =====');
-                        console.log(`✅ Total products saved: ${savedProductReports.length}`);
-                        return savedProductReports[0];
+                        catch (storedProcedureError) {
+                            console.log('⚠️ Stored procedure failed, falling back to individual inserts:', storedProcedureError.message);
+                            const savedProductReports = [];
+                            for (let i = 0; i < details.length; i++) {
+                                const productDetail = details[i];
+                                console.log(`📋 Processing product ${i + 1}:`, JSON.stringify(productDetail, null, 2));
+                                const { reportId: productReportId, ...productDetailsWithoutReportId } = productDetail;
+                                const productDataToSave = {
+                                    ...mappedMainData,
+                                    ...productDetailsWithoutReportId,
+                                    userId: finalUserId
+                                };
+                                console.log(`📋 Creating product report ${i + 1} with data:`, JSON.stringify(productDataToSave, null, 2));
+                                const productReport = this.productReportRepository.create(productDataToSave);
+                                console.log(`📋 Product report ${i + 1} entity created:`, JSON.stringify(productReport, null, 2));
+                                const savedProductReport = await this.productReportRepository.save(productReport);
+                                console.log(`✅ Product report ${i + 1} saved successfully!`);
+                                console.log(`✅ Product report ${i + 1} ID:`, savedProductReport.id);
+                                console.log(`✅ Product name:`, savedProductReport.productName);
+                                console.log(`✅ Product quantity:`, savedProductReport.quantity);
+                                console.log(`✅ Product comment:`, savedProductReport.comment);
+                                console.log(`✅ Product report ${i + 1} created at:`, savedProductReport.createdAt);
+                                savedProductReports.push(savedProductReport);
+                            }
+                            console.log('📋 ===== FALLBACK MULTIPLE PRODUCT REPORTS CREATION COMPLETE =====');
+                            console.log(`✅ Total products saved via fallback: ${savedProductReports.length}`);
+                            return savedProductReports[0];
+                        }
                     }
                     else {
                         console.log('📋 Processing single product');
@@ -687,6 +710,55 @@ let ReportsService = class ReportsService {
             return {};
         }
     }
+    async bulkInsertProductReports(journeyPlanId, clientId, userId, products) {
+        try {
+            console.log('🚀 BulkInsertProductReports: Starting bulk insert');
+            console.log(`🚀 Journey Plan ID: ${journeyPlanId}`);
+            console.log(`🚀 Client ID: ${clientId}`);
+            console.log(`🚀 User ID: ${userId}`);
+            console.log(`🚀 Products count: ${products.length}`);
+            if (!journeyPlanId || journeyPlanId <= 0) {
+                throw new Error('Invalid journey plan ID');
+            }
+            if (!clientId || clientId <= 0) {
+                throw new Error('Invalid client ID');
+            }
+            if (!userId || userId <= 0) {
+                throw new Error('Invalid user ID');
+            }
+            if (!products || products.length === 0) {
+                throw new Error('No products provided');
+            }
+            const productsJson = JSON.stringify(products);
+            console.log('🚀 Products JSON:', productsJson);
+            const result = await this.dataSource.query('CALL BulkInsertProductReports(?, ?, ?, ?)', [journeyPlanId, clientId, userId, productsJson]);
+            console.log('🚀 Stored procedure result:', result);
+            if (result && result.length > 0 && result[0].length > 0) {
+                const procedureResult = result[0][0];
+                console.log('✅ Stored procedure executed successfully:', procedureResult);
+                if (procedureResult.status === 'SUCCESS') {
+                    return {
+                        status: 'SUCCESS',
+                        message: procedureResult.message,
+                        inserted_count: procedureResult.inserted_count,
+                        journey_plan_id: procedureResult.journey_plan_id,
+                        client_id: procedureResult.client_id,
+                        user_id: procedureResult.user_id
+                    };
+                }
+                else {
+                    throw new Error(`Stored procedure error: ${procedureResult.message}`);
+                }
+            }
+            else {
+                throw new Error('No result returned from stored procedure');
+            }
+        }
+        catch (error) {
+            console.error('❌ BulkInsertProductReports error:', error);
+            throw error;
+        }
+    }
 };
 exports.ReportsService = ReportsService;
 exports.ReportsService = ReportsService = __decorate([
@@ -696,6 +768,7 @@ exports.ReportsService = ReportsService = __decorate([
     __param(2, (0, typeorm_1.InjectRepository)(visibility_report_entity_1.VisibilityReport)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
         typeorm_2.Repository,
-        typeorm_2.Repository])
+        typeorm_2.Repository,
+        typeorm_2.DataSource])
 ], ReportsService);
 //# sourceMappingURL=reports.service.js.map
