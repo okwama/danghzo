@@ -1,5 +1,6 @@
 import { Controller, Post, Get, Body, Param, HttpCode, HttpStatus, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 import { ClockInOutService } from './clock-in-out.service';
 import { ClockOutSchedulerService } from './clock-out-scheduler.service';
 import { ClockInDto, ClockOutDto } from './dto';
@@ -105,8 +106,9 @@ export class ClockInOutController {
   }
 
   /**
-   * Vercel cron job endpoint for session cleanup
+   * Vercel cron job endpoint for session cleanup (public - no auth required)
    */
+  @Public()
   @Get('vercel-cron-cleanup')
   @HttpCode(HttpStatus.OK)
   async vercelCronCleanup() {
@@ -114,8 +116,9 @@ export class ClockInOutController {
   }
 
   /**
-   * Health check for cron job
+   * Health check for cron job (public - no auth required)
    */
+  @Public()
   @Get('cron-health')
   async cronHealthCheck() {
     const activeSessionsCount = await this.clockOutSchedulerService.getActiveSessionsCount();

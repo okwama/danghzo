@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ClockInOutController = void 0;
 const common_1 = require("@nestjs/common");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const public_decorator_1 = require("../auth/decorators/public.decorator");
 const clock_in_out_service_1 = require("./clock-in-out.service");
 const clock_out_scheduler_service_1 = require("./clock-out-scheduler.service");
 const dto_1 = require("./dto");
@@ -128,13 +129,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ClockInOutController.prototype, "forceClockOut", null);
 __decorate([
-    (0, common_1.Post)('vercel-cron-cleanup'),
+    (0, public_decorator_1.Public)(),
+    (0, common_1.Get)('vercel-cron-cleanup'),
     (0, common_1.HttpCode)(common_1.HttpStatus.OK),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ClockInOutController.prototype, "vercelCronCleanup", null);
 __decorate([
+    (0, public_decorator_1.Public)(),
     (0, common_1.Get)('cron-health'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
