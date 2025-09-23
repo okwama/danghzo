@@ -107,7 +107,7 @@ export class ClockInOutController {
   /**
    * Vercel cron job endpoint for session cleanup
    */
-  @Post('vercel-cron-cleanup')
+  @Get('vercel-cron-cleanup')
   @HttpCode(HttpStatus.OK)
   async vercelCronCleanup() {
     return await this.clockOutSchedulerService.executeVercelCronJob();

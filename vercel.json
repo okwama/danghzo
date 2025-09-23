@@ -18,7 +18,7 @@
   "crons": [
     {
       "path": "/api/clock-in-out/vercel-cron-cleanup",
-      "schedule": "40 23 * * *"
+      "schedule": "44 23 * * *"
     }
   ]
 } 
