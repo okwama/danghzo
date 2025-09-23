@@ -23,6 +23,24 @@ export class ClockInOutService {
 
       this.logger.log(`🟢 Clock In attempt for user ${userId} at ${clientTime}`);
 
+      // Prefer DB stored procedure if enabled
+      const useDbSp = (process.env.USE_DB_SP_CLOCK ?? 'true').toLowerCase() !== 'false';
+      if (useDbSp) {
+        try {
+          const raw = await this.dataSource.manager.query('CALL sp_clock_in(?, ?)', [userId, clientTime]);
+          const rows = Array.isArray(raw) ? (Array.isArray(raw[0]) ? raw[0] : raw) : [];
+          const r = rows[0] || {};
+          const ok = (r.result || '').toString().toLowerCase() === 'ok';
+          return {
+            success: ok,
+            message: r.message || (ok ? 'Successfully clocked in' : 'Clock in failed'),
+            sessionId: r.sessionId ? Number(r.sessionId) : undefined,
+          };
+        } catch (spErr) {
+          this.logger.warn(`SP clock_in failed, falling back to TypeORM logic: ${spErr.message}`);
+        }
+      }
+
       // Check if user has an active session for TODAY (using Africa/Nairobi timezone)
       const now = new Date();
       // Convert to Africa/Nairobi timezone (UTC+3)
@@ -141,6 +159,24 @@ export class ClockInOutService {
 
       this.logger.log(`🔴 Clock Out attempt for user ${userId} at ${clientTime}`);
       this.logger.log(`🔍 ClockOut: Looking for active session for user ${userId}`);
+
+      // Prefer DB stored procedure if enabled
+      const useDbSp = (process.env.USE_DB_SP_CLOCK ?? 'true').toLowerCase() !== 'false';
+      if (useDbSp) {
+        try {
+          const raw = await this.dataSource.manager.query('CALL sp_clock_out(?, ?)', [userId, clientTime]);
+          const rows = Array.isArray(raw) ? (Array.isArray(raw[0]) ? raw[0] : raw) : [];
+          const r = rows[0] || {};
+          const ok = (r.result || '').toString().toLowerCase() === 'ok';
+          return {
+            success: ok,
+            message: r.message || (ok ? 'Successfully clocked out' : 'Clock out failed'),
+            duration: r.durationMinutes ? Number(r.durationMinutes) : undefined,
+          };
+        } catch (spErr) {
+          this.logger.warn(`SP clock_out failed, falling back to TypeORM logic: ${spErr.message}`);
+        }
+      }
 
       // Find TODAY's active session (using Africa/Nairobi timezone)
       const now = new Date();

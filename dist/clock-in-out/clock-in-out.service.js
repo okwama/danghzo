@@ -28,6 +28,23 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
         try {
             const { userId, clientTime } = clockInDto;
             this.logger.log(`🟢 Clock In attempt for user ${userId} at ${clientTime}`);
+            const useDbSp = (process.env.USE_DB_SP_CLOCK ?? 'true').toLowerCase() !== 'false';
+            if (useDbSp) {
+                try {
+                    const raw = await this.dataSource.manager.query('CALL sp_clock_in(?, ?)', [userId, clientTime]);
+                    const rows = Array.isArray(raw) ? (Array.isArray(raw[0]) ? raw[0] : raw) : [];
+                    const r = rows[0] || {};
+                    const ok = (r.result || '').toString().toLowerCase() === 'ok';
+                    return {
+                        success: ok,
+                        message: r.message || (ok ? 'Successfully clocked in' : 'Clock in failed'),
+                        sessionId: r.sessionId ? Number(r.sessionId) : undefined,
+                    };
+                }
+                catch (spErr) {
+                    this.logger.warn(`SP clock_in failed, falling back to TypeORM logic: ${spErr.message}`);
+                }
+            }
             const now = new Date();
             const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
             const todayStr = nairobiTime.toISOString().slice(0, 10);
@@ -122,6 +139,23 @@ let ClockInOutService = ClockInOutService_1 = class ClockInOutService {
             const { userId, clientTime } = clockOutDto;
             this.logger.log(`🔴 Clock Out attempt for user ${userId} at ${clientTime}`);
             this.logger.log(`🔍 ClockOut: Looking for active session for user ${userId}`);
+            const useDbSp = (process.env.USE_DB_SP_CLOCK ?? 'true').toLowerCase() !== 'false';
+            if (useDbSp) {
+                try {
+                    const raw = await this.dataSource.manager.query('CALL sp_clock_out(?, ?)', [userId, clientTime]);
+                    const rows = Array.isArray(raw) ? (Array.isArray(raw[0]) ? raw[0] : raw) : [];
+                    const r = rows[0] || {};
+                    const ok = (r.result || '').toString().toLowerCase() === 'ok';
+                    return {
+                        success: ok,
+                        message: r.message || (ok ? 'Successfully clocked out' : 'Clock out failed'),
+                        duration: r.durationMinutes ? Number(r.durationMinutes) : undefined,
+                    };
+                }
+                catch (spErr) {
+                    this.logger.warn(`SP clock_out failed, falling back to TypeORM logic: ${spErr.message}`);
+                }
+            }
             const now = new Date();
             const nairobiTime = new Date(now.getTime() + (3 * 60 * 60 * 1000));
             const todayStr = nairobiTime.toISOString().slice(0, 10);

@@ -34,6 +34,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { ProductReturnsModule } from './product-returns/product-returns.module';
 import { AppCacheModule } from './cache/cache.module';
 import { AppController } from './app.controller';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -82,6 +83,7 @@ import { AppController } from './app.controller';
     VersionModule,
     PaymentsModule,
     ProductReturnsModule,
+    DashboardModule,
   ],
   controllers: [AppController, DatabaseMonitorController],
   providers: [DatabaseHealthService, DatabaseResilienceService],
