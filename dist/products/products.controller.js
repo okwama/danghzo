@@ -52,6 +52,23 @@ let ProductsController = class ProductsController {
             throw error;
         }
     }
+    async getCategories(req) {
+        try {
+            console.log('📂 Products API: GET /products/categories called');
+            const userCountryId = req.user?.countryId;
+            if (!userCountryId) {
+                throw new Error('Country ID not found in user token');
+            }
+            console.log(`📂 Products API: Getting categories for country: ${userCountryId}`);
+            const categories = await this.productsService.getCategoriesByCountry(userCountryId);
+            console.log(`📂 Products API: Returning ${categories.length} categories for country ${userCountryId}`);
+            return categories;
+        }
+        catch (error) {
+            console.error('❌ Products Categories API Error:', error);
+            throw error;
+        }
+    }
     async findOne(id) {
         return this.productsService.findOne(+id);
     }
@@ -59,6 +76,7 @@ let ProductsController = class ProductsController {
 exports.ProductsController = ProductsController;
 __decorate([
     (0, common_1.Get)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
@@ -72,7 +90,16 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ProductsController.prototype, "findProductsByCountry", null);
 __decorate([
+    (0, common_1.Get)('categories'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ProductsController.prototype, "getCategories", null);
+__decorate([
     (0, common_1.Get)(':id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [String]),
@@ -104,6 +131,7 @@ let HealthController = class HealthController {
 exports.HealthController = HealthController;
 __decorate([
     (0, common_1.Get)('products'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)

@@ -1,3 +1,4 @@
+import { Response } from 'express';
 export declare class AppController {
     getRoot(): {
         message: string;
@@ -11,6 +12,7 @@ export declare class AppController {
             orders: string;
             analytics: string;
             health: string;
+            ping: string;
         };
         documentation: string;
     };
@@ -20,4 +22,12 @@ export declare class AppController {
         timestamp: string;
         uptime: number;
     };
+    getPing(): {
+        status: string;
+        message: string;
+        timestamp: string;
+        uptime: number;
+    };
+    getFavicon(res: Response): void;
+    getFaviconPng(res: Response): void;
 }

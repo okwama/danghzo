@@ -6,6 +6,7 @@ export declare class ProductsController {
     constructor(productsService: ProductsService, dataSource: DataSource);
     findAll(): Promise<import("./entities/product.entity").Product[]>;
     findProductsByCountry(req: any): Promise<import("./entities/product.entity").Product[]>;
+    getCategories(req: any): Promise<any[]>;
     findOne(id: string): Promise<import("./entities/product.entity").Product>;
 }
 export declare class HealthController {

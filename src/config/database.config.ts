@@ -54,13 +54,22 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       // MySQL2 specific timeout settings
       acquireTimeout: 60000, // 60 seconds to acquire connection
       timeout: 60000, // 60 seconds query timeout
-      reconnect: true, // Enable automatic reconnection
       // Connection pool settings
       waitForConnections: true,
       queueLimit: 0, // No limit on queue
       // Keep alive settings
       keepAliveInitialDelay: 10000, // 10 seconds
       enableKeepAlive: true,
+      // Connection reset handling
+      supportBigNumbers: true,
+      bigNumberStrings: true,
+      // Improved connection handling
+      flags: ['-FOUND_ROWS'],
+      // Connection validation
+      validateConnection: true,
+      // Retry settings
+      maxReconnects: 10,
+      reconnectInterval: 2000,
     },
     // TypeORM retry settings
     retryAttempts: 10, // Increased retry attempts

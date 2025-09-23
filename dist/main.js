@@ -5,6 +5,7 @@ const core_1 = require("@nestjs/core");
 const app_module_1 = require("./app.module");
 const common_1 = require("@nestjs/common");
 const path_1 = require("path");
+const database_exception_filter_1 = require("./filters/database-exception.filter");
 let app;
 async function bootstrap() {
     try {
@@ -22,6 +23,7 @@ async function bootstrap() {
                 transform: true,
                 whitelist: true,
             }));
+            app.useGlobalFilters(new database_exception_filter_1.DatabaseExceptionFilter());
             app.setGlobalPrefix('api');
             await app.init();
             console.log('✅ NestJS application initialized successfully');

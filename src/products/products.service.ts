@@ -156,6 +156,64 @@ export class ProductsService {
     return this.productRepository.findOne({ where: { id } });
   }
 
+  async getCategoriesByCountry(countryId: number): Promise<any[]> {
+    try {
+      console.log(`📂 Fetching categories for country: ${countryId}`);
+      
+      // Get all categories with their products for the specific country
+      const categories = await this.dataSource
+        .createQueryBuilder()
+        .select([
+          'c.id as categoryId',
+          'c.categoryName as categoryName',
+          'c.description as description',
+          'c.isActive as isActive',
+          'COUNT(DISTINCT p.id) as productCount'
+        ])
+        .from('categories', 'c')
+        .leftJoin('products', 'p', 'p.category_id = c.id AND p.is_active = 1')
+        .leftJoin('store_inventory', 'si', 'si.product_id = p.id')
+        .leftJoin('stores', 's', 's.id = si.store_id AND s.country_id = :countryId AND s.is_active = 1', { countryId })
+        .where('c.is_active = 1')
+        .groupBy('c.id, c.categoryName, c.description, c.isActive')
+        .orderBy('c.categoryName', 'ASC')
+        .getRawMany();
+
+      console.log(`✅ Found ${categories.length} active categories for country ${countryId}`);
+      return categories;
+
+    } catch (error) {
+      console.error('❌ Error fetching categories by country:', error);
+      
+      // Fallback: Return all active categories without country filtering
+      try {
+        console.log('🔄 Falling back to all categories due to error');
+        const fallbackCategories = await this.dataSource
+          .createQueryBuilder()
+          .select([
+            'c.id as categoryId',
+            'c.categoryName as categoryName',
+            'c.description as description',
+            'c.isActive as isActive',
+            'COUNT(DISTINCT p.id) as productCount'
+          ])
+          .from('categories', 'c')
+          .leftJoin('products', 'p', 'p.category_id = c.id AND p.is_active = 1')
+          .where('c.is_active = 1')
+          .groupBy('c.id, c.categoryName, c.description, c.isActive')
+          .orderBy('c.categoryName', 'ASC')
+          .getRawMany();
+
+        console.log(`✅ Fallback: Found ${fallbackCategories.length} active categories`);
+        return fallbackCategories;
+
+      } catch (fallbackError) {
+        console.error('❌ Fallback categories fetch also failed:', fallbackError);
+        return []; // Return empty array if both attempts fail
+      }
+    }
+  }
+
   /**
    * Calculate stock status for a product in a specific country
    * @param product The product entity

@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { DatabaseExceptionFilter } from './filters/database-exception.filter';
 
 let app: any;
 
@@ -27,6 +28,9 @@ async function bootstrap() {
         transform: true,
         whitelist: true,
       }));
+      
+      // Add global exception filter for database errors
+      app.useGlobalFilters(new DatabaseExceptionFilter());
       
       // Set global prefix for API routes
       app.setGlobalPrefix('api');

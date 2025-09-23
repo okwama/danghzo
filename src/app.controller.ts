@@ -1,8 +1,11 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Res, UseGuards } from '@nestjs/common';
+import { Response } from 'express';
+import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 
 @Controller()
 export class AppController {
   @Get()
+  @UseGuards(JwtAuthGuard)
   getRoot() {
     return {
       message: 'Niaje! 🚀 API is running smoothly',
@@ -15,7 +18,8 @@ export class AppController {
         products: '/api/products',
         orders: '/api/orders',
         analytics: '/api/analytics',
-        health: '/api/health'
+        health: '/api/health',
+        ping: '/api/ping'
       },
       documentation: 'Check the server_doc folder for API documentation'
     };
@@ -29,5 +33,27 @@ export class AppController {
       timestamp: new Date().toISOString(),
       uptime: process.uptime()
     };
+  }
+
+  @Get('ping')
+  getPing() {
+    return {
+      status: 'pong',
+      message: 'API is alive! 🏓',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime()
+    };
+  }
+
+  @Get('favicon.ico')
+  @UseGuards(JwtAuthGuard)
+  getFavicon(@Res() res: Response) {
+    res.status(204).send(); // No content for favicon
+  }
+
+  @Get('favicon.png')
+  @UseGuards(JwtAuthGuard)
+  getFaviconPng(@Res() res: Response) {
+    res.status(204).send(); // No content for favicon
   }
 }

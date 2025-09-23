@@ -12,6 +12,7 @@ export class ProductsController {
   ) {}
 
   @Get()
+  @UseGuards(JwtAuthGuard)
   async findAll() {
     try {
       console.log('📦 Products API: GET /products called');
@@ -47,7 +48,31 @@ export class ProductsController {
     }
   }
 
+  @Get('categories')
+  @UseGuards(JwtAuthGuard)
+  async getCategories(@Request() req) {
+    try {
+      console.log('📂 Products API: GET /products/categories called');
+      
+      // Get country from JWT token
+      const userCountryId = req.user?.countryId;
+      
+      if (!userCountryId) {
+        throw new Error('Country ID not found in user token');
+      }
+
+      console.log(`📂 Products API: Getting categories for country: ${userCountryId}`);
+      const categories = await this.productsService.getCategoriesByCountry(userCountryId);
+      console.log(`📂 Products API: Returning ${categories.length} categories for country ${userCountryId}`);
+      return categories;
+    } catch (error) {
+      console.error('❌ Products Categories API Error:', error);
+      throw error;
+    }
+  }
+
   @Get(':id')
+  @UseGuards(JwtAuthGuard)
   async findOne(@Param('id') id: string) {
     return this.productsService.findOne(+id);
   }
@@ -59,6 +84,7 @@ export class HealthController {
   constructor(@InjectDataSource() private dataSource: DataSource) {}
 
   @Get('products')
+  @UseGuards(JwtAuthGuard)
   async productsHealthCheck() {
     try {
       console.log('🏥 Products Health Check: Testing database connection...');
