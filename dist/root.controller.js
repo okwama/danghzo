@@ -12,42 +12,21 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.AppController = void 0;
+exports.RootController = void 0;
 const common_1 = require("@nestjs/common");
-const jwt_auth_guard_1 = require("./auth/guards/jwt-auth.guard");
-let AppController = class AppController {
+let RootController = class RootController {
     getRoot() {
         return {
-            message: 'Niaje! 🚀 API is running smoothly',
+            message: 'Welcome to the API! 🚀',
             status: 'online',
             version: '1.0.0',
             timestamp: new Date().toISOString(),
+            info: 'This is the root endpoint. Use /api/ for API endpoints.',
             endpoints: {
-                auth: '/api/auth',
-                clients: '/api/clients',
-                products: '/api/products',
-                orders: '/api/orders',
-                analytics: '/api/analytics',
+                api: '/api/',
                 health: '/api/health',
                 ping: '/api/ping'
-            },
-            documentation: 'Check the server_doc folder for API documentation'
-        };
-    }
-    getHealth() {
-        return {
-            status: 'healthy',
-            message: 'API is running perfectly! 💪',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime()
-        };
-    }
-    getPing() {
-        return {
-            status: 'pong',
-            message: 'API is alive! 🏓',
-            timestamp: new Date().toISOString(),
-            uptime: process.uptime()
+            }
         };
     }
     getFavicon(res) {
@@ -57,41 +36,28 @@ let AppController = class AppController {
         res.status(204).send();
     }
 };
-exports.AppController = AppController;
+exports.RootController = RootController;
 __decorate([
     (0, common_1.Get)(),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
-], AppController.prototype, "getRoot", null);
-__decorate([
-    (0, common_1.Get)('health'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], AppController.prototype, "getHealth", null);
-__decorate([
-    (0, common_1.Get)('ping'),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], AppController.prototype, "getPing", null);
+], RootController.prototype, "getRoot", null);
 __decorate([
     (0, common_1.Get)('favicon.ico'),
     __param(0, (0, common_1.Res)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
-], AppController.prototype, "getFavicon", null);
+], RootController.prototype, "getFavicon", null);
 __decorate([
     (0, common_1.Get)('favicon.png'),
     __param(0, (0, common_1.Res)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
-], AppController.prototype, "getFaviconPng", null);
-exports.AppController = AppController = __decorate([
+], RootController.prototype, "getFaviconPng", null);
+exports.RootController = RootController = __decorate([
     (0, common_1.Controller)()
-], AppController);
-//# sourceMappingURL=app.controller.js.map
+], RootController);
+//# sourceMappingURL=root.controller.js.map

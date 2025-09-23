@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, RequestMethod } from '@nestjs/common';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DatabaseExceptionFilter } from './filters/database-exception.filter';
@@ -32,8 +32,14 @@ async function bootstrap() {
       // Add global exception filter for database errors
       app.useGlobalFilters(new DatabaseExceptionFilter());
       
-      // Set global prefix for API routes
-      app.setGlobalPrefix('api');
+      // Set global prefix for API routes, but exclude root and favicon
+      app.setGlobalPrefix('api', {
+        exclude: [
+          { path: '', method: RequestMethod.GET },
+          { path: 'favicon.ico', method: RequestMethod.GET },
+          { path: 'favicon.png', method: RequestMethod.GET },
+        ],
+      });
       
       await app.init();
       

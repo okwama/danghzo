@@ -46,13 +46,11 @@ export class AppController {
   }
 
   @Get('favicon.ico')
-  @UseGuards(JwtAuthGuard)
   getFavicon(@Res() res: Response) {
     res.status(204).send(); // No content for favicon
   }
 
   @Get('favicon.png')
-  @UseGuards(JwtAuthGuard)
   getFaviconPng(@Res() res: Response) {
     res.status(204).send(); // No content for favicon
   }

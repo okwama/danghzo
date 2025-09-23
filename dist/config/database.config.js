@@ -58,8 +58,6 @@ const getDatabaseConfig = (configService) => {
             bigNumberStrings: true,
             flags: ['-FOUND_ROWS'],
             validateConnection: true,
-            maxReconnects: 10,
-            reconnectInterval: 2000,
         },
         retryAttempts: 10,
         retryDelay: 3000,

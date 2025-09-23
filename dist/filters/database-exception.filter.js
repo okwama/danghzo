@@ -69,15 +69,20 @@ let DatabaseExceptionFilter = DatabaseExceptionFilter_1 = class DatabaseExceptio
                 errorCode = 'UNEXPECTED_ERROR';
             }
         }
-        this.logger.error(`Error ${status} on ${request.method} ${request.url}: ${message}`, {
-            error: exception,
-            request: {
-                method: request.method,
-                url: request.url,
-                userAgent: request.get('User-Agent'),
-                ip: request.ip,
-            },
-        });
+        if (status !== common_1.HttpStatus.NOT_FOUND) {
+            this.logger.error(`Error ${status} on ${request.method} ${request.url}: ${message}`, {
+                error: exception,
+                request: {
+                    method: request.method,
+                    url: request.url,
+                    userAgent: request.get('User-Agent'),
+                    ip: request.ip,
+                },
+            });
+        }
+        else {
+            this.logger.debug(`404 Not Found: ${request.method} ${request.url}`);
+        }
         response.status(status).json({
             statusCode: status,
             error: errorCode,

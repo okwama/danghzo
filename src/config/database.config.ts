@@ -67,9 +67,6 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       flags: ['-FOUND_ROWS'],
       // Connection validation
       validateConnection: true,
-      // Retry settings
-      maxReconnects: 10,
-      reconnectInterval: 2000,
     },
     // TypeORM retry settings
     retryAttempts: 10, // Increased retry attempts

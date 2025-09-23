@@ -70,19 +70,26 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       }
     }
 
-    // Log the error with request context
-    this.logger.error(
-      `Error ${status} on ${request.method} ${request.url}: ${message}`,
-      {
-        error: exception,
-        request: {
-          method: request.method,
-          url: request.url,
-          userAgent: request.get('User-Agent'),
-          ip: request.ip,
-        },
-      }
-    );
+    // Log the error with request context (but not for 404s)
+    if (status !== HttpStatus.NOT_FOUND) {
+      this.logger.error(
+        `Error ${status} on ${request.method} ${request.url}: ${message}`,
+        {
+          error: exception,
+          request: {
+            method: request.method,
+            url: request.url,
+            userAgent: request.get('User-Agent'),
+            ip: request.ip,
+          },
+        }
+      );
+    } else {
+      // Log 404s as debug instead of error
+      this.logger.debug(
+        `404 Not Found: ${request.method} ${request.url}`
+      );
+    }
 
     // Send error response
     response.status(status).json({

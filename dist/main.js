@@ -24,7 +24,13 @@ async function bootstrap() {
                 whitelist: true,
             }));
             app.useGlobalFilters(new database_exception_filter_1.DatabaseExceptionFilter());
-            app.setGlobalPrefix('api');
+            app.setGlobalPrefix('api', {
+                exclude: [
+                    { path: '', method: common_1.RequestMethod.GET },
+                    { path: 'favicon.ico', method: common_1.RequestMethod.GET },
+                    { path: 'favicon.png', method: common_1.RequestMethod.GET },
+                ],
+            });
             await app.init();
             console.log('✅ NestJS application initialized successfully');
         }
