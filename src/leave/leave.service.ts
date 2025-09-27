@@ -45,9 +45,14 @@ export class LeaveService {
         createLeaveDto.endDate = new Date(createLeaveDto.endDate);
       }
       
-      // Validate required fields
-      if (!createLeaveDto.userId || !createLeaveDto.leaveType || !createLeaveDto.startDate || !createLeaveDto.endDate || !createLeaveDto.reason) {
-        throw new Error('Missing required fields: userId, leaveType, startDate, endDate, reason');
+      // Validate required fields (reason is optional)
+      if (!createLeaveDto.userId || !createLeaveDto.leaveType || !createLeaveDto.startDate || !createLeaveDto.endDate) {
+        throw new Error('Missing required fields: userId, leaveType, startDate, endDate');
+      }
+
+      // Normalize optional fields
+      if (typeof createLeaveDto.reason === 'string' && createLeaveDto.reason.trim() === '') {
+        createLeaveDto.reason = null;
       }
       
     const leave = this.leaveRepository.create(createLeaveDto);

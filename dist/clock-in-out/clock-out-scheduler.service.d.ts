@@ -6,12 +6,20 @@ export declare class ClockOutSchedulerService {
     constructor(loginHistoryRepository: Repository<LoginHistory>);
     autoClockOutAllUsers(): Promise<void>;
     manualTriggerClockOut(): Promise<void>;
+    getActiveSessionsCount(): Promise<number>;
     executeVercelCronJob(): Promise<{
         success: boolean;
         message: string;
+        activeSessionsRemaining: number;
         timestamp: string;
-        affectedSessions?: number;
-        error?: string;
+        timezone: string;
+        error?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        error: any;
+        timestamp: string;
+        timezone: string;
+        activeSessionsRemaining?: undefined;
     }>;
-    getActiveSessionsCount(): Promise<number>;
 }

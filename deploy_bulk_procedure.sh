@@ -79,3 +79,4 @@ echo "  - Bulk operations: 50-70% faster"
 echo "  - Reduced database load"
 echo "  - Better transaction handling"
 echo "=================================================="
+

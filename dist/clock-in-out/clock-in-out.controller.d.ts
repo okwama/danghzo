@@ -46,9 +46,17 @@ export declare class ClockInOutController {
     vercelCronCleanup(): Promise<{
         success: boolean;
         message: string;
+        activeSessionsRemaining: number;
         timestamp: string;
-        affectedSessions?: number;
-        error?: string;
+        timezone: string;
+        error?: undefined;
+    } | {
+        success: boolean;
+        message: string;
+        error: any;
+        timestamp: string;
+        timezone: string;
+        activeSessionsRemaining?: undefined;
     }>;
     cronHealthCheck(): Promise<{
         status: string;

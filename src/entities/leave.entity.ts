@@ -17,7 +17,7 @@ export class Leave {
   @Column({ type: 'datetime' })
   endDate: Date;
 
-  @Column({ type: 'text' })
+  @Column({ type: 'text', nullable: true })
   reason: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -35,8 +35,19 @@ export class Leave {
   // Virtual property for calculating duration
   get durationInDays(): number {
     if (!this.startDate || !this.endDate) return 0;
-    const diffTime = Math.abs(this.endDate.getTime() - this.startDate.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays + 1; // Include both start and end dates
+    const start = new Date(this.startDate.getFullYear(), this.startDate.getMonth(), this.startDate.getDate());
+    const end = new Date(this.endDate.getFullYear(), this.endDate.getMonth(), this.endDate.getDate());
+    if (start > end) return 0;
+
+    let daysCount = 0;
+    const cursor = new Date(start);
+    while (cursor <= end) {
+      const isSunday = cursor.getDay() === 0; // 0 = Sunday
+      if (!isSunday) {
+        daysCount++;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return daysCount;
   }
 } 

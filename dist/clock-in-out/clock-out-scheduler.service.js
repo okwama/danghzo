@@ -75,38 +75,36 @@ let ClockOutSchedulerService = ClockOutSchedulerService_1 = class ClockOutSchedu
         this.logger.log('🔧 Manually triggering automatic clock-out job');
         await this.autoClockOutAllUsers();
     }
-    async executeVercelCronJob() {
-        try {
-            this.logger.log('🕕 Vercel cron job triggered: Starting session cleanup');
-            const beforeCount = await this.getActiveSessionsCount();
-            this.logger.log(`🔍 Found ${beforeCount} active sessions before cleanup`);
-            await this.autoClockOutAllUsers();
-            const afterCount = await this.getActiveSessionsCount();
-            const affectedSessions = beforeCount - afterCount;
-            this.logger.log(`✅ Vercel cron job completed. Affected ${affectedSessions} sessions`);
-            return {
-                success: true,
-                message: 'Session cleanup completed successfully',
-                timestamp: new Date().toISOString(),
-                affectedSessions: affectedSessions
-            };
-        }
-        catch (error) {
-            this.logger.error('❌ Vercel cron job failed:', error);
-            return {
-                success: false,
-                message: 'Session cleanup failed',
-                error: error.message,
-                timestamp: new Date().toISOString()
-            };
-        }
-    }
     async getActiveSessionsCount() {
         return await this.loginHistoryRepository.count({
             where: {
                 status: 1,
             },
         });
+    }
+    async executeVercelCronJob() {
+        this.logger.log('🔄 Vercel cron job triggered for session cleanup');
+        try {
+            await this.autoClockOutAllUsers();
+            const activeCount = await this.getActiveSessionsCount();
+            return {
+                success: true,
+                message: 'Vercel cron job executed successfully',
+                activeSessionsRemaining: activeCount,
+                timestamp: new Date().toISOString(),
+                timezone: 'Africa/Nairobi'
+            };
+        }
+        catch (error) {
+            this.logger.error('❌ Vercel cron job failed:', error);
+            return {
+                success: false,
+                message: 'Vercel cron job failed',
+                error: error.message,
+                timestamp: new Date().toISOString(),
+                timezone: 'Africa/Nairobi'
+            };
+        }
     }
 };
 exports.ClockOutSchedulerService = ClockOutSchedulerService;
