@@ -6,6 +6,7 @@ import { PdfExportService } from './pdf-export.service';
 import { FeedbackReport } from 'src/entities/feedback-report.entity';
 import { ProductReport } from 'src/entities/product-report.entity';
 import { VisibilityReport } from 'src/entities/visibility-report.entity';
+import { CompetitorReport } from 'src/entities/competitor-report.entity';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { VisibilityReport } from 'src/entities/visibility-report.entity';
       FeedbackReport,
       ProductReport,
       VisibilityReport,
+      CompetitorReport,
     ]),
   ],
   controllers: [ReportsController],

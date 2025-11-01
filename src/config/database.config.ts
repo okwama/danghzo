@@ -21,6 +21,7 @@ import { LeaveType } from '../entities/leave-type.entity';
 import { FeedbackReport } from '../entities/feedback-report.entity';
 import { ProductReport } from '../entities/product-report.entity';
 import { VisibilityReport } from '../entities/visibility-report.entity';
+import { CompetitorReport } from '../entities/competitor-report.entity';
 import { SalesClientPayment } from '../entities/sales-client-payment.entity';
 import { ProductReturn } from '../product-returns/entities/product-return.entity';
 
@@ -39,7 +40,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     entities: [
       SalesRep, Clients, Product, JourneyPlan, LoginHistory, UpliftSale, UpliftSaleItem,
       Task, Leave, Store, StoreInventory, Category, CategoryPriceOption, Order, OrderItem, Users, Notice, LeaveType,
-      FeedbackReport, ProductReport, VisibilityReport, SalesClientPayment, ProductReturn,
+      FeedbackReport, ProductReport, VisibilityReport, CompetitorReport, SalesClientPayment, ProductReturn,
     ],
     synchronize: false,
     logging: configService.get<boolean>('DB_LOGGING', false),

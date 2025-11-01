@@ -24,8 +24,17 @@ export class LeaveService {
       queryBuilder.where('leave.userId = :userId', { userId: query.userId });
     }
     
-    if (query.status) {
-      queryBuilder.andWhere('leave.status = :status', { status: query.status });
+    if (query.status !== undefined && query.status !== null) {
+      const mapStatus = (val: any): number => {
+        if (typeof val === 'number') return val;
+        const s = String(val).toLowerCase();
+        if (s === 'pending') return 0;
+        if (s === 'approved') return 1;
+        if (s === 'rejected' || s === 'cancelled' || s === 'canceled') return 2;
+        const n = Number(s);
+        return Number.isFinite(n) ? n : 0;
+      };
+      queryBuilder.andWhere('leave.status = :status', { status: mapStatus(query.status) });
     }
     
     return queryBuilder.orderBy('leave.createdAt', 'DESC').getMany();
@@ -55,7 +64,10 @@ export class LeaveService {
         createLeaveDto.reason = null;
       }
       
-    const leave = this.leaveRepository.create(createLeaveDto);
+    const leave = this.leaveRepository.create({
+      ...createLeaveDto,
+      status: 0, // pending
+    });
     const result = await this.leaveRepository.save(leave);
       
       // Also create entry in leave_requests table for double entry
@@ -91,7 +103,7 @@ export class LeaveService {
         end_date: createLeaveDto.endDate,
         reason: createLeaveDto.reason,
         attachment_url: createLeaveDto.attachment || null,
-        status: 'pending',
+        status: 0,
         employee_type_id: null, // Set to null for salesreps
         salesrep: createLeaveDto.userId, // Use salesrep field for SalesRep ID
       };
@@ -121,7 +133,7 @@ export class LeaveService {
   async getLeaveBalance(userId: number): Promise<any> {
     const leaveTypes = await this.getLeaveTypes();
     const approvedLeaves = await this.leaveRepository.find({
-      where: { userId, status: 'APPROVED' },
+      where: { userId, status: 1 },
     });
 
     const balance = {};

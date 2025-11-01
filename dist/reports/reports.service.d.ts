@@ -2,12 +2,14 @@ import { Repository, DataSource } from 'typeorm';
 import { FeedbackReport } from '../entities/feedback-report.entity';
 import { ProductReport } from '../entities/product-report.entity';
 import { VisibilityReport } from '../entities/visibility-report.entity';
+import { CompetitorReport } from '../entities/competitor-report.entity';
 export declare class ReportsService {
     private feedbackReportRepository;
     private productReportRepository;
     private visibilityReportRepository;
+    private competitorReportRepository;
     private dataSource;
-    constructor(feedbackReportRepository: Repository<FeedbackReport>, productReportRepository: Repository<ProductReport>, visibilityReportRepository: Repository<VisibilityReport>, dataSource: DataSource);
+    constructor(feedbackReportRepository: Repository<FeedbackReport>, productReportRepository: Repository<ProductReport>, visibilityReportRepository: Repository<VisibilityReport>, competitorReportRepository: Repository<CompetitorReport>, dataSource: DataSource);
     submitReport(reportData: any, authenticatedUserId?: number): Promise<any>;
     getReportsByJourneyPlan(journeyPlanId: number, options?: {
         limit?: number;

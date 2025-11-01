@@ -19,11 +19,13 @@ const typeorm_2 = require("typeorm");
 const feedback_report_entity_1 = require("../entities/feedback-report.entity");
 const product_report_entity_1 = require("../entities/product-report.entity");
 const visibility_report_entity_1 = require("../entities/visibility-report.entity");
+const competitor_report_entity_1 = require("../entities/competitor-report.entity");
 let ReportsService = class ReportsService {
-    constructor(feedbackReportRepository, productReportRepository, visibilityReportRepository, dataSource) {
+    constructor(feedbackReportRepository, productReportRepository, visibilityReportRepository, competitorReportRepository, dataSource) {
         this.feedbackReportRepository = feedbackReportRepository;
         this.productReportRepository = productReportRepository;
         this.visibilityReportRepository = visibilityReportRepository;
+        this.competitorReportRepository = competitorReportRepository;
         this.dataSource = dataSource;
     }
     async submitReport(reportData, authenticatedUserId) {
@@ -205,10 +207,63 @@ let ReportsService = class ReportsService {
                     console.log('✅ Visibility report created at:', savedVisibilityReport.createdAt);
                     console.log('📋 ===== VISIBILITY ACTIVITY REPORT CREATION COMPLETE =====');
                     return savedVisibilityReport;
+                case 'COMPETITOR':
+                    console.log('📋 ===== COMPETITOR REPORT CREATION =====');
+                    console.log('📋 Final User ID for competitor report:', finalUserId);
+                    console.log('📋 Mapped main data:', JSON.stringify(mappedMainData, null, 2));
+                    if (Array.isArray(details)) {
+                        console.log('📋 Processing multiple competitors:', details.length);
+                        const savedCompetitorReports = [];
+                        for (let i = 0; i < details.length; i++) {
+                            const competitorDetail = details[i];
+                            console.log(`📋 Processing competitor ${i + 1}:`, JSON.stringify(competitorDetail, null, 2));
+                            const { reportId: competitorReportId, ...competitorDetailsWithoutReportId } = competitorDetail;
+                            const competitorDataToSave = {
+                                ...mappedMainData,
+                                ...competitorDetailsWithoutReportId,
+                                userId: finalUserId
+                            };
+                            console.log(`📋 Creating competitor report ${i + 1} with data:`, JSON.stringify(competitorDataToSave, null, 2));
+                            const competitorReport = this.competitorReportRepository.create(competitorDataToSave);
+                            console.log(`📋 Competitor report ${i + 1} entity created:`, JSON.stringify(competitorReport, null, 2));
+                            const savedCompetitorReport = await this.competitorReportRepository.save(competitorReport);
+                            console.log(`✅ Competitor report ${i + 1} saved successfully!`);
+                            console.log(`✅ Competitor report ${i + 1} ID:`, savedCompetitorReport.id);
+                            console.log(`✅ Competitor name:`, savedCompetitorReport.competitorName);
+                            console.log(`✅ Product name:`, savedCompetitorReport.productName);
+                            console.log(`✅ Price:`, savedCompetitorReport.price);
+                            console.log(`✅ Competitor report ${i + 1} created at:`, savedCompetitorReport.createdAt);
+                            savedCompetitorReports.push(savedCompetitorReport);
+                        }
+                        console.log('📋 ===== MULTIPLE COMPETITOR REPORTS CREATION COMPLETE =====');
+                        console.log(`✅ Total competitors saved: ${savedCompetitorReports.length}`);
+                        return savedCompetitorReports[0];
+                    }
+                    else {
+                        console.log('📋 Processing single competitor');
+                        const { reportId: singleCompetitorReportId, ...singleCompetitorDetails } = details || {};
+                        const singleCompetitorDataToSave = {
+                            ...mappedMainData,
+                            ...singleCompetitorDetails,
+                            userId: finalUserId
+                        };
+                        console.log('📋 Creating single competitor report with data:', JSON.stringify(singleCompetitorDataToSave, null, 2));
+                        const singleCompetitorReport = this.competitorReportRepository.create(singleCompetitorDataToSave);
+                        console.log('📋 Single competitor report entity created:', JSON.stringify(singleCompetitorReport, null, 2));
+                        const savedSingleCompetitorReport = await this.competitorReportRepository.save(singleCompetitorReport);
+                        console.log('✅ Single competitor report saved successfully!');
+                        console.log('✅ Competitor report ID:', savedSingleCompetitorReport.id);
+                        console.log('✅ Competitor name:', savedSingleCompetitorReport.competitorName);
+                        console.log('✅ Product name:', savedSingleCompetitorReport.productName);
+                        console.log('✅ Price:', savedSingleCompetitorReport.price);
+                        console.log('✅ Competitor report created at:', savedSingleCompetitorReport.createdAt);
+                        console.log('📋 ===== SINGLE COMPETITOR REPORT CREATION COMPLETE =====');
+                        return savedSingleCompetitorReport;
+                    }
                 default:
                     console.error('❌ ===== UNKNOWN REPORT TYPE =====');
                     console.error('❌ Unknown report type:', reportType);
-                    console.error('❌ Available types: FEEDBACK, PRODUCT_AVAILABILITY, VISIBILITY_ACTIVITY');
+                    console.error('❌ Available types: FEEDBACK, PRODUCT_AVAILABILITY, VISIBILITY_ACTIVITY, COMPETITOR');
                     console.error('❌ Received data:', JSON.stringify(reportData, null, 2));
                     throw new Error(`Unknown report type: ${reportType}`);
             }
@@ -265,6 +320,14 @@ let ReportsService = class ReportsService {
                 .orderBy('visibility.createdAt', 'DESC')
                 .limit(limit)
                 .offset(offset);
+            const competitorQuery = this.competitorReportRepository
+                .createQueryBuilder('competitor')
+                .where('competitor.reportId = :journeyPlanId', { journeyPlanId })
+                .andWhere('competitor.createdAt >= :startOfDay', { startOfDay })
+                .andWhere('competitor.createdAt <= :endOfDay', { endOfDay })
+                .orderBy('competitor.createdAt', 'DESC')
+                .limit(limit)
+                .offset(offset);
             if (includeRelations) {
                 feedbackQuery.leftJoinAndSelect('feedback.user', 'user');
                 feedbackQuery.leftJoinAndSelect('feedback.client', 'client');
@@ -272,21 +335,25 @@ let ReportsService = class ReportsService {
                 productQuery.leftJoinAndSelect('product.client', 'client');
                 visibilityQuery.leftJoinAndSelect('visibility.user', 'user');
                 visibilityQuery.leftJoinAndSelect('visibility.client', 'client');
+                competitorQuery.leftJoinAndSelect('competitor.user', 'user');
+                competitorQuery.leftJoinAndSelect('competitor.client', 'client');
             }
-            const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+            const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
                 feedbackQuery.getMany(),
                 productQuery.getMany(),
                 visibilityQuery.getMany(),
+                competitorQuery.getMany(),
             ]);
-            console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports`);
+            console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports, ${competitorReports.length} competitor reports`);
             return {
                 feedbackReports,
                 productReports,
                 visibilityReports,
+                competitorReports,
                 pagination: {
                     limit,
                     offset,
-                    hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit
+                    hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit || competitorReports.length === limit
                 }
             };
         }
@@ -322,25 +389,34 @@ let ReportsService = class ReportsService {
                 .orderBy('visibility.createdAt', 'DESC')
                 .limit(limit)
                 .offset(offset);
+            const competitorQuery = this.competitorReportRepository
+                .createQueryBuilder('competitor')
+                .orderBy('competitor.createdAt', 'DESC')
+                .limit(limit)
+                .offset(offset);
             if (options?.userId) {
                 feedbackQuery.andWhere('feedback.userId = :userId', { userId: options.userId });
                 productQuery.andWhere('product.userId = :userId', { userId: options.userId });
                 visibilityQuery.andWhere('visibility.userId = :userId', { userId: options.userId });
+                competitorQuery.andWhere('competitor.userId = :userId', { userId: options.userId });
             }
             if (options?.clientId) {
                 feedbackQuery.andWhere('feedback.clientId = :clientId', { clientId: options.clientId });
                 productQuery.andWhere('product.clientId = :clientId', { clientId: options.clientId });
                 visibilityQuery.andWhere('visibility.clientId = :clientId', { clientId: options.clientId });
+                competitorQuery.andWhere('competitor.clientId = :clientId', { clientId: options.clientId });
             }
             if (options?.startDate) {
                 feedbackQuery.andWhere('feedback.createdAt >= :startDate', { startDate: options.startDate });
                 productQuery.andWhere('product.createdAt >= :startDate', { startDate: options.startDate });
                 visibilityQuery.andWhere('visibility.createdAt >= :startDate', { startDate: options.startDate });
+                competitorQuery.andWhere('competitor.createdAt >= :startDate', { startDate: options.startDate });
             }
             if (options?.endDate) {
                 feedbackQuery.andWhere('feedback.createdAt <= :endDate', { endDate: options.endDate });
                 productQuery.andWhere('product.createdAt <= :endDate', { endDate: options.endDate });
                 visibilityQuery.andWhere('visibility.createdAt <= :endDate', { endDate: options.endDate });
+                competitorQuery.andWhere('competitor.createdAt <= :endDate', { endDate: options.endDate });
             }
             if (includeRelations) {
                 feedbackQuery.leftJoinAndSelect('feedback.user', 'user');
@@ -349,21 +425,25 @@ let ReportsService = class ReportsService {
                 productQuery.leftJoinAndSelect('product.client', 'client');
                 visibilityQuery.leftJoinAndSelect('visibility.user', 'user');
                 visibilityQuery.leftJoinAndSelect('visibility.client', 'client');
+                competitorQuery.leftJoinAndSelect('competitor.user', 'user');
+                competitorQuery.leftJoinAndSelect('competitor.client', 'client');
             }
-            const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+            const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
                 feedbackQuery.getMany(),
                 productQuery.getMany(),
                 visibilityQuery.getMany(),
+                competitorQuery.getMany(),
             ]);
-            console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports`);
+            console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports, ${competitorReports.length} competitor reports`);
             return {
                 feedbackReports,
                 productReports,
                 visibilityReports,
+                competitorReports,
                 pagination: {
                     limit,
                     offset,
-                    hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit
+                    hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit || competitorReports.length === limit
                 }
             };
         }
@@ -378,22 +458,26 @@ let ReportsService = class ReportsService {
             const feedbackQuery = this.feedbackReportRepository.createQueryBuilder('feedback');
             const productQuery = this.productReportRepository.createQueryBuilder('product');
             const visibilityQuery = this.visibilityReportRepository.createQueryBuilder('visibility');
+            const competitorQuery = this.competitorReportRepository.createQueryBuilder('competitor');
             if (journeyPlanId) {
                 feedbackQuery.where('feedback.reportId = :journeyPlanId', { journeyPlanId });
                 productQuery.where('product.reportId = :journeyPlanId', { journeyPlanId });
                 visibilityQuery.where('visibility.reportId = :journeyPlanId', { journeyPlanId });
+                competitorQuery.where('competitor.reportId = :journeyPlanId', { journeyPlanId });
             }
-            const [feedbackCount, productCount, visibilityCount] = await Promise.all([
+            const [feedbackCount, productCount, visibilityCount, competitorCount] = await Promise.all([
                 feedbackQuery.getCount(),
                 productQuery.getCount(),
                 visibilityQuery.getCount(),
+                competitorQuery.getCount(),
             ]);
-            console.log(`✅ Report counts - Feedback: ${feedbackCount}, Product: ${productCount}, Visibility: ${visibilityCount}`);
+            console.log(`✅ Report counts - Feedback: ${feedbackCount}, Product: ${productCount}, Visibility: ${visibilityCount}, Competitor: ${competitorCount}`);
             return {
                 feedbackCount,
                 productCount,
                 visibilityCount,
-                totalCount: feedbackCount + productCount + visibilityCount
+                competitorCount,
+                totalCount: feedbackCount + productCount + visibilityCount + competitorCount
             };
         }
         catch (error) {
@@ -407,7 +491,7 @@ let ReportsService = class ReportsService {
             const targetDate = new Date(date);
             const startOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 0, 0, 0, 0);
             const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
-            const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+            const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
                 this.feedbackReportRepository.find({
                     where: {
                         createdAt: (0, typeorm_2.Between)(startOfDay, endOfDay),
@@ -429,6 +513,13 @@ let ReportsService = class ReportsService {
                     },
                     relations: ['client', 'user'],
                 }),
+                this.competitorReportRepository.find({
+                    where: {
+                        createdAt: (0, typeorm_2.Between)(startOfDay, endOfDay),
+                        userId: userId,
+                    },
+                    relations: ['client', 'user'],
+                }),
             ]);
             const visitsMap = new Map();
             feedbackReports.forEach(report => {
@@ -443,6 +534,7 @@ let ReportsService = class ReportsService {
                         feedbackReports: [],
                         productReports: [],
                         visibilityReports: [],
+                        competitorReports: [],
                         totalReports: 0,
                         isComplete: false,
                     });
@@ -462,6 +554,7 @@ let ReportsService = class ReportsService {
                         feedbackReports: [],
                         productReports: [],
                         visibilityReports: [],
+                        competitorReports: [],
                         totalReports: 0,
                         isComplete: false,
                     });
@@ -481,11 +574,32 @@ let ReportsService = class ReportsService {
                         feedbackReports: [],
                         productReports: [],
                         visibilityReports: [],
+                        competitorReports: [],
                         totalReports: 0,
                         isComplete: false,
                     });
                 }
                 visitsMap.get(clientId).visibilityReports.push(report);
+                visitsMap.get(clientId).totalReports++;
+            });
+            competitorReports.forEach(report => {
+                const clientId = report.clientId;
+                if (!visitsMap.has(clientId)) {
+                    visitsMap.set(clientId, {
+                        clientId: clientId,
+                        clientName: report.client?.name || 'Unknown Client',
+                        userId: report.userId,
+                        userName: report.user?.name || 'Unknown User',
+                        date: date,
+                        feedbackReports: [],
+                        productReports: [],
+                        visibilityReports: [],
+                        competitorReports: [],
+                        totalReports: 0,
+                        isComplete: false,
+                    });
+                }
+                visitsMap.get(clientId).competitorReports.push(report);
                 visitsMap.get(clientId).totalReports++;
             });
             const visits = Array.from(visitsMap.values()).map(visit => ({
@@ -513,7 +627,7 @@ let ReportsService = class ReportsService {
             weekEnd.setHours(23, 59, 59, 999);
             console.log(`🔍 Week range: ${weekStart.toISOString()} to ${weekEnd.toISOString()}`);
             console.log(`🔍 Fetching reports for user ${userId} between ${weekStart.toISOString()} and ${weekEnd.toISOString()}...`);
-            const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+            const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
                 this.feedbackReportRepository.find({
                     where: {
                         userId,
@@ -535,11 +649,19 @@ let ReportsService = class ReportsService {
                     },
                     relations: ['client', 'user'],
                 }),
+                this.competitorReportRepository.find({
+                    where: {
+                        userId,
+                        createdAt: (0, typeorm_2.Between)(weekStart, weekEnd)
+                    },
+                    relations: ['client', 'user'],
+                }),
             ]);
             console.log(`🔍 ALL reports found for user ${userId}:`);
             console.log(`  - Feedback reports: ${feedbackReports.length}`);
             console.log(`  - Product reports: ${productReports.length}`);
             console.log(`  - Visibility reports: ${visibilityReports.length}`);
+            console.log(`  - Competitor reports: ${competitorReports.length}`);
             if (feedbackReports.length > 0) {
                 console.log(`  - Sample feedback: ID ${feedbackReports[0].id}, Client ${feedbackReports[0].clientId}, Date ${feedbackReports[0].createdAt}`);
             }
@@ -549,7 +671,10 @@ let ReportsService = class ReportsService {
             if (visibilityReports.length > 0) {
                 console.log(`  - Sample visibility: ID ${visibilityReports[0].id}, Client ${visibilityReports[0].clientId}, Date ${visibilityReports[0].createdAt}`);
             }
-            const totalReports = feedbackReports.length + productReports.length + visibilityReports.length;
+            if (competitorReports.length > 0) {
+                console.log(`  - Sample competitor: ID ${competitorReports[0].id}, Client ${competitorReports[0].clientId}, Date ${competitorReports[0].createdAt}`);
+            }
+            const totalReports = feedbackReports.length + productReports.length + visibilityReports.length + competitorReports.length;
             console.log(`📊 Total reports found: ${totalReports}`);
             if (totalReports === 0) {
                 console.log('⚠️ No reports found for this user in the specified week');
@@ -567,7 +692,8 @@ let ReportsService = class ReportsService {
             const allReports = [
                 ...feedbackReports.map(r => ({ ...r, type: 'feedback' })),
                 ...productReports.map(r => ({ ...r, type: 'product' })),
-                ...visibilityReports.map(r => ({ ...r, type: 'visibility' }))
+                ...visibilityReports.map(r => ({ ...r, type: 'visibility' })),
+                ...competitorReports.map(r => ({ ...r, type: 'competitor' }))
             ];
             console.log(`🔍 Processing ${allReports.length} total reports...`);
             allReports.forEach(report => {
@@ -628,9 +754,26 @@ let ReportsService = class ReportsService {
                             type: 'visibility'
                         });
                     }
+                    else if (report.type === 'competitor') {
+                        if (!existingVisit.competitorReports)
+                            existingVisit.competitorReports = [];
+                        existingVisit.competitorReports.push({
+                            id: report.id,
+                            competitorName: report.competitorName,
+                            productName: report.productName,
+                            price: report.price,
+                            quantity: report.quantity,
+                            promotion: report.promotion,
+                            comment: report.comment,
+                            imageUrl: report.imageUrl,
+                            createdAt: report.createdAt,
+                            type: 'competitor'
+                        });
+                    }
                     existingVisit.totalReports = (existingVisit.feedbackReports?.length || 0) +
                         (existingVisit.productReports?.length || 0) +
-                        (existingVisit.visibilityReports?.length || 0);
+                        (existingVisit.visibilityReports?.length || 0) +
+                        (existingVisit.competitorReports?.length || 0);
                     existingVisit.isComplete = existingVisit.totalReports >= 3;
                 }
                 else {
@@ -648,7 +791,8 @@ let ReportsService = class ReportsService {
                         isComplete: false,
                         feedbackReports: [],
                         productReports: [],
-                        visibilityReports: []
+                        visibilityReports: [],
+                        competitorReports: []
                     };
                     if (report.type === 'feedback') {
                         newVisit.feedbackReports = [{
@@ -676,6 +820,20 @@ let ReportsService = class ReportsService {
                                 imageUrl: report.imageUrl,
                                 createdAt: report.createdAt,
                                 type: 'visibility'
+                            }];
+                    }
+                    else if (report.type === 'competitor') {
+                        newVisit.competitorReports = [{
+                                id: report.id,
+                                competitorName: report.competitorName,
+                                productName: report.productName,
+                                price: report.price,
+                                quantity: report.quantity,
+                                promotion: report.promotion,
+                                comment: report.comment,
+                                imageUrl: report.imageUrl,
+                                createdAt: report.createdAt,
+                                type: 'competitor'
                             }];
                     }
                     result[dateKey].push(newVisit);
@@ -766,7 +924,9 @@ exports.ReportsService = ReportsService = __decorate([
     __param(0, (0, typeorm_1.InjectRepository)(feedback_report_entity_1.FeedbackReport)),
     __param(1, (0, typeorm_1.InjectRepository)(product_report_entity_1.ProductReport)),
     __param(2, (0, typeorm_1.InjectRepository)(visibility_report_entity_1.VisibilityReport)),
+    __param(3, (0, typeorm_1.InjectRepository)(competitor_report_entity_1.CompetitorReport)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.DataSource])

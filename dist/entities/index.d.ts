@@ -13,6 +13,7 @@ export { CategoryPriceOption } from './category-price-option.entity';
 export { ProductReport } from './product-report.entity';
 export { FeedbackReport } from './feedback-report.entity';
 export { VisibilityReport } from './visibility-report.entity';
+export { CompetitorReport } from './competitor-report.entity';
 export { Target } from './target.entity';
 export { Upload } from './upload.entity';
 export { SalesClientPayment } from './sales-client-payment.entity';

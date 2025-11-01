@@ -18,7 +18,7 @@ let AnalyticsModule = class AnalyticsModule {
 exports.AnalyticsModule = AnalyticsModule;
 exports.AnalyticsModule = AnalyticsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([entities_1.SalesRep, entities_1.Clients, product_entity_1.Product, entities_1.JourneyPlan, entities_1.LoginHistory, entities_1.UpliftSale, entities_1.ProductReport, entities_1.FeedbackReport, entities_1.VisibilityReport])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([entities_1.SalesRep, entities_1.Clients, product_entity_1.Product, entities_1.JourneyPlan, entities_1.LoginHistory, entities_1.UpliftSale, entities_1.ProductReport, entities_1.FeedbackReport, entities_1.VisibilityReport, entities_1.CompetitorReport])],
         controllers: [analytics_controller_1.AnalyticsController],
         providers: [analytics_service_1.AnalyticsService],
         exports: [analytics_service_1.AnalyticsService],

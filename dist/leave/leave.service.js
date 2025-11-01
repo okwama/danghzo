@@ -30,8 +30,21 @@ let LeaveService = class LeaveService {
         if (query.userId) {
             queryBuilder.where('leave.userId = :userId', { userId: query.userId });
         }
-        if (query.status) {
-            queryBuilder.andWhere('leave.status = :status', { status: query.status });
+        if (query.status !== undefined && query.status !== null) {
+            const mapStatus = (val) => {
+                if (typeof val === 'number')
+                    return val;
+                const s = String(val).toLowerCase();
+                if (s === 'pending')
+                    return 0;
+                if (s === 'approved')
+                    return 1;
+                if (s === 'rejected' || s === 'cancelled' || s === 'canceled')
+                    return 2;
+                const n = Number(s);
+                return Number.isFinite(n) ? n : 0;
+            };
+            queryBuilder.andWhere('leave.status = :status', { status: mapStatus(query.status) });
         }
         return queryBuilder.orderBy('leave.createdAt', 'DESC').getMany();
     }
@@ -52,7 +65,10 @@ let LeaveService = class LeaveService {
             if (typeof createLeaveDto.reason === 'string' && createLeaveDto.reason.trim() === '') {
                 createLeaveDto.reason = null;
             }
-            const leave = this.leaveRepository.create(createLeaveDto);
+            const leave = this.leaveRepository.create({
+                ...createLeaveDto,
+                status: 0,
+            });
             const result = await this.leaveRepository.save(leave);
             try {
                 await this.createLeaveRequest(createLeaveDto);
@@ -82,7 +98,7 @@ let LeaveService = class LeaveService {
                 end_date: createLeaveDto.endDate,
                 reason: createLeaveDto.reason,
                 attachment_url: createLeaveDto.attachment || null,
-                status: 'pending',
+                status: 0,
                 employee_type_id: null,
                 salesrep: createLeaveDto.userId,
             };
@@ -108,7 +124,7 @@ let LeaveService = class LeaveService {
     async getLeaveBalance(userId) {
         const leaveTypes = await this.getLeaveTypes();
         const approvedLeaves = await this.leaveRepository.find({
-            where: { userId, status: 'APPROVED' },
+            where: { userId, status: 1 },
         });
         const balance = {};
         for (const leaveType of leaveTypes) {

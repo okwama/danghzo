@@ -15,20 +15,9 @@ let Leave = class Leave {
     get durationInDays() {
         if (!this.startDate || !this.endDate)
             return 0;
-        const start = new Date(this.startDate.getFullYear(), this.startDate.getMonth(), this.startDate.getDate());
-        const end = new Date(this.endDate.getFullYear(), this.endDate.getMonth(), this.endDate.getDate());
-        if (start > end)
-            return 0;
-        let daysCount = 0;
-        const cursor = new Date(start);
-        while (cursor <= end) {
-            const isSunday = cursor.getDay() === 0;
-            if (!isSunday) {
-                daysCount++;
-            }
-            cursor.setDate(cursor.getDate() + 1);
-        }
-        return daysCount;
+        const diffTime = Math.abs(this.endDate.getTime() - this.startDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays + 1;
     }
 };
 exports.Leave = Leave;
@@ -53,7 +42,7 @@ __decorate([
     __metadata("design:type", Date)
 ], Leave.prototype, "endDate", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'text', nullable: true }),
+    (0, typeorm_1.Column)({ type: 'text' }),
     __metadata("design:type", String)
 ], Leave.prototype, "reason", void 0);
 __decorate([
@@ -61,8 +50,8 @@ __decorate([
     __metadata("design:type", String)
 ], Leave.prototype, "attachment", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'varchar', length: 50, default: 'PENDING' }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'tinyint', default: 0 }),
+    __metadata("design:type", Number)
 ], Leave.prototype, "status", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }),

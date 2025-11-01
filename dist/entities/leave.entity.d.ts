@@ -6,7 +6,7 @@ export declare class Leave {
     endDate: Date;
     reason: string;
     attachment: string;
-    status: string;
+    status: number;
     createdAt: Date;
     updatedAt: Date;
     get durationInDays(): number;

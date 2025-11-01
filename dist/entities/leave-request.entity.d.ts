@@ -7,7 +7,7 @@ export declare class LeaveRequest {
     is_half_day: boolean;
     reason: string;
     attachment_url: string;
-    status: string;
+    status: number;
     approved_by: number;
     employee_type_id: number;
     notes: string;

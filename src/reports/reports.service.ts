@@ -4,6 +4,7 @@ import { Repository, Between, DataSource } from 'typeorm';
 import { FeedbackReport } from '../entities/feedback-report.entity';
 import { ProductReport } from '../entities/product-report.entity';
 import { VisibilityReport } from '../entities/visibility-report.entity';
+import { CompetitorReport } from '../entities/competitor-report.entity';
 
 @Injectable()
 export class ReportsService {
@@ -14,6 +15,8 @@ export class ReportsService {
     private productReportRepository: Repository<ProductReport>,
     @InjectRepository(VisibilityReport)
     private visibilityReportRepository: Repository<VisibilityReport>,
+    @InjectRepository(CompetitorReport)
+    private competitorReportRepository: Repository<CompetitorReport>,
     private dataSource: DataSource,
   ) {}
 
@@ -263,10 +266,84 @@ export class ReportsService {
           console.log('📋 ===== VISIBILITY ACTIVITY REPORT CREATION COMPLETE =====');
           return savedVisibilityReport;
 
+        case 'COMPETITOR':
+          console.log('📋 ===== COMPETITOR REPORT CREATION =====');
+          console.log('📋 Final User ID for competitor report:', finalUserId);
+          console.log('📋 Mapped main data:', JSON.stringify(mappedMainData, null, 2));
+          
+          // Check if details is an array (multiple competitors) or object (single competitor)
+          if (Array.isArray(details)) {
+            console.log('📋 Processing multiple competitors:', details.length);
+            
+            // Handle bulk competitor reports
+            const savedCompetitorReports = [];
+            
+            for (let i = 0; i < details.length; i++) {
+              const competitorDetail = details[i];
+              console.log(`📋 Processing competitor ${i + 1}:`, JSON.stringify(competitorDetail, null, 2));
+              
+              // Extract reportId from competitor detail and exclude it
+              const { reportId: competitorReportId, ...competitorDetailsWithoutReportId } = competitorDetail;
+              
+              // Combine main data with competitor details
+              const competitorDataToSave = {
+                ...mappedMainData,
+                ...competitorDetailsWithoutReportId,
+                userId: finalUserId
+              };
+
+              console.log(`📋 Creating competitor report ${i + 1} with data:`, JSON.stringify(competitorDataToSave, null, 2));
+              const competitorReport = this.competitorReportRepository.create(competitorDataToSave);
+              console.log(`📋 Competitor report ${i + 1} entity created:`, JSON.stringify(competitorReport, null, 2));
+              const savedCompetitorReport = await this.competitorReportRepository.save(competitorReport);
+              
+              console.log(`✅ Competitor report ${i + 1} saved successfully!`);
+              console.log(`✅ Competitor report ${i + 1} ID:`, (savedCompetitorReport as any).id);
+              console.log(`✅ Competitor name:`, (savedCompetitorReport as any).competitorName);
+              console.log(`✅ Product name:`, (savedCompetitorReport as any).productName);
+              console.log(`✅ Price:`, (savedCompetitorReport as any).price);
+              console.log(`✅ Competitor report ${i + 1} created at:`, (savedCompetitorReport as any).createdAt);
+              
+              savedCompetitorReports.push(savedCompetitorReport);
+            }
+            
+            console.log('📋 ===== MULTIPLE COMPETITOR REPORTS CREATION COMPLETE =====');
+            console.log(`✅ Total competitors saved: ${savedCompetitorReports.length}`);
+            
+            // Return the first saved report for backward compatibility
+            return savedCompetitorReports[0];
+          } else {
+            // Single competitor report
+            console.log('📋 Processing single competitor');
+            
+            // Extract reportId from details and exclude it to avoid duplicate key errors
+            const { reportId: singleCompetitorReportId, ...singleCompetitorDetails } = details || {};
+            
+            // Combine main data with details and map userId/salesRepId properly
+            const singleCompetitorDataToSave = {
+              ...mappedMainData,
+              ...singleCompetitorDetails,
+              userId: finalUserId
+            };
+
+            console.log('📋 Creating single competitor report with data:', JSON.stringify(singleCompetitorDataToSave, null, 2));
+            const singleCompetitorReport = this.competitorReportRepository.create(singleCompetitorDataToSave);
+            console.log('📋 Single competitor report entity created:', JSON.stringify(singleCompetitorReport, null, 2));
+            const savedSingleCompetitorReport = await this.competitorReportRepository.save(singleCompetitorReport);
+            console.log('✅ Single competitor report saved successfully!');
+            console.log('✅ Competitor report ID:', (savedSingleCompetitorReport as any).id);
+            console.log('✅ Competitor name:', (savedSingleCompetitorReport as any).competitorName);
+            console.log('✅ Product name:', (savedSingleCompetitorReport as any).productName);
+            console.log('✅ Price:', (savedSingleCompetitorReport as any).price);
+            console.log('✅ Competitor report created at:', (savedSingleCompetitorReport as any).createdAt);
+            console.log('📋 ===== SINGLE COMPETITOR REPORT CREATION COMPLETE =====');
+            return savedSingleCompetitorReport;
+          }
+
         default:
           console.error('❌ ===== UNKNOWN REPORT TYPE =====');
           console.error('❌ Unknown report type:', reportType);
-          console.error('❌ Available types: FEEDBACK, PRODUCT_AVAILABILITY, VISIBILITY_ACTIVITY');
+          console.error('❌ Available types: FEEDBACK, PRODUCT_AVAILABILITY, VISIBILITY_ACTIVITY, COMPETITOR');
           console.error('❌ Received data:', JSON.stringify(reportData, null, 2));
           throw new Error(`Unknown report type: ${reportType}`);
       }
@@ -343,6 +420,15 @@ export class ReportsService {
         .limit(limit)
         .offset(offset);
 
+      const competitorQuery = this.competitorReportRepository
+        .createQueryBuilder('competitor')
+        .where('competitor.reportId = :journeyPlanId', { journeyPlanId })
+        .andWhere('competitor.createdAt >= :startOfDay', { startOfDay })
+        .andWhere('competitor.createdAt <= :endOfDay', { endOfDay })
+        .orderBy('competitor.createdAt', 'DESC')
+        .limit(limit)
+        .offset(offset);
+
       // Only add relations if specifically requested
       if (includeRelations) {
         feedbackQuery.leftJoinAndSelect('feedback.user', 'user');
@@ -353,24 +439,29 @@ export class ReportsService {
         
         visibilityQuery.leftJoinAndSelect('visibility.user', 'user');
         visibilityQuery.leftJoinAndSelect('visibility.client', 'client');
+        
+        competitorQuery.leftJoinAndSelect('competitor.user', 'user');
+        competitorQuery.leftJoinAndSelect('competitor.client', 'client');
       }
 
-      const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+      const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
         feedbackQuery.getMany(),
         productQuery.getMany(),
         visibilityQuery.getMany(),
+        competitorQuery.getMany(),
       ]);
 
-      console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports`);
+      console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports, ${competitorReports.length} competitor reports`);
 
       return {
         feedbackReports,
         productReports,
         visibilityReports,
+        competitorReports,
         pagination: {
           limit,
           offset,
-          hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit
+          hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit || competitorReports.length === limit
         }
       };
     } catch (error) {
@@ -426,29 +517,39 @@ export class ReportsService {
         .limit(limit)
         .offset(offset);
 
+      const competitorQuery = this.competitorReportRepository
+        .createQueryBuilder('competitor')
+        .orderBy('competitor.createdAt', 'DESC')
+        .limit(limit)
+        .offset(offset);
+
       // Add filters if provided
       if (options?.userId) {
         feedbackQuery.andWhere('feedback.userId = :userId', { userId: options.userId });
         productQuery.andWhere('product.userId = :userId', { userId: options.userId });
         visibilityQuery.andWhere('visibility.userId = :userId', { userId: options.userId });
+        competitorQuery.andWhere('competitor.userId = :userId', { userId: options.userId });
       }
 
       if (options?.clientId) {
         feedbackQuery.andWhere('feedback.clientId = :clientId', { clientId: options.clientId });
         productQuery.andWhere('product.clientId = :clientId', { clientId: options.clientId });
         visibilityQuery.andWhere('visibility.clientId = :clientId', { clientId: options.clientId });
+        competitorQuery.andWhere('competitor.clientId = :clientId', { clientId: options.clientId });
       }
 
       if (options?.startDate) {
         feedbackQuery.andWhere('feedback.createdAt >= :startDate', { startDate: options.startDate });
         productQuery.andWhere('product.createdAt >= :startDate', { startDate: options.startDate });
         visibilityQuery.andWhere('visibility.createdAt >= :startDate', { startDate: options.startDate });
+        competitorQuery.andWhere('competitor.createdAt >= :startDate', { startDate: options.startDate });
       }
 
       if (options?.endDate) {
         feedbackQuery.andWhere('feedback.createdAt <= :endDate', { endDate: options.endDate });
         productQuery.andWhere('product.createdAt <= :endDate', { endDate: options.endDate });
         visibilityQuery.andWhere('visibility.createdAt <= :endDate', { endDate: options.endDate });
+        competitorQuery.andWhere('competitor.createdAt <= :endDate', { endDate: options.endDate });
       }
 
       // Only add relations if specifically requested
@@ -461,24 +562,29 @@ export class ReportsService {
         
         visibilityQuery.leftJoinAndSelect('visibility.user', 'user');
         visibilityQuery.leftJoinAndSelect('visibility.client', 'client');
+        
+        competitorQuery.leftJoinAndSelect('competitor.user', 'user');
+        competitorQuery.leftJoinAndSelect('competitor.client', 'client');
       }
 
-      const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+      const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
         feedbackQuery.getMany(),
         productQuery.getMany(),
         visibilityQuery.getMany(),
+        competitorQuery.getMany(),
       ]);
 
-      console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports`);
+      console.log(`✅ Found ${feedbackReports.length} feedback reports, ${productReports.length} product reports, ${visibilityReports.length} visibility reports, ${competitorReports.length} competitor reports`);
 
       return {
         feedbackReports,
         productReports,
         visibilityReports,
+        competitorReports,
         pagination: {
           limit,
           offset,
-          hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit
+          hasMore: feedbackReports.length === limit || productReports.length === limit || visibilityReports.length === limit || competitorReports.length === limit
         }
       };
     } catch (error) {
@@ -495,26 +601,30 @@ export class ReportsService {
       const feedbackQuery = this.feedbackReportRepository.createQueryBuilder('feedback');
       const productQuery = this.productReportRepository.createQueryBuilder('product');
       const visibilityQuery = this.visibilityReportRepository.createQueryBuilder('visibility');
+      const competitorQuery = this.competitorReportRepository.createQueryBuilder('competitor');
 
       if (journeyPlanId) {
         feedbackQuery.where('feedback.reportId = :journeyPlanId', { journeyPlanId });
         productQuery.where('product.reportId = :journeyPlanId', { journeyPlanId });
         visibilityQuery.where('visibility.reportId = :journeyPlanId', { journeyPlanId });
+        competitorQuery.where('competitor.reportId = :journeyPlanId', { journeyPlanId });
       }
 
-      const [feedbackCount, productCount, visibilityCount] = await Promise.all([
+      const [feedbackCount, productCount, visibilityCount, competitorCount] = await Promise.all([
         feedbackQuery.getCount(),
         productQuery.getCount(),
         visibilityQuery.getCount(),
+        competitorQuery.getCount(),
       ]);
 
-      console.log(`✅ Report counts - Feedback: ${feedbackCount}, Product: ${productCount}, Visibility: ${visibilityCount}`);
+      console.log(`✅ Report counts - Feedback: ${feedbackCount}, Product: ${productCount}, Visibility: ${visibilityCount}, Competitor: ${competitorCount}`);
 
       return {
         feedbackCount,
         productCount,
         visibilityCount,
-        totalCount: feedbackCount + productCount + visibilityCount
+        competitorCount,
+        totalCount: feedbackCount + productCount + visibilityCount + competitorCount
       };
     } catch (error) {
       console.error('❌ Error getting report counts:', error);
@@ -532,7 +642,7 @@ export class ReportsService {
       const endOfDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate(), 23, 59, 59, 999);
 
       // Get all reports for the specified date - always filter by authenticated user for security
-      const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+      const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
         this.feedbackReportRepository.find({
           where: {
             createdAt: Between(startOfDay, endOfDay),
@@ -548,6 +658,13 @@ export class ReportsService {
           relations: ['client', 'user'],
         }),
         this.visibilityReportRepository.find({
+          where: {
+            createdAt: Between(startOfDay, endOfDay),
+            userId: userId, // Always filter by authenticated user
+          },
+          relations: ['client', 'user'],
+        }),
+        this.competitorReportRepository.find({
           where: {
             createdAt: Between(startOfDay, endOfDay),
             userId: userId, // Always filter by authenticated user
@@ -572,6 +689,7 @@ export class ReportsService {
             feedbackReports: [],
             productReports: [],
             visibilityReports: [],
+            competitorReports: [],
             totalReports: 0,
             isComplete: false,
           });
@@ -593,6 +711,7 @@ export class ReportsService {
             feedbackReports: [],
             productReports: [],
             visibilityReports: [],
+            competitorReports: [],
             totalReports: 0,
             isComplete: false,
           });
@@ -614,6 +733,7 @@ export class ReportsService {
             feedbackReports: [],
             productReports: [],
             visibilityReports: [],
+            competitorReports: [],
             totalReports: 0,
             isComplete: false,
           });
@@ -622,10 +742,32 @@ export class ReportsService {
         visitsMap.get(clientId).totalReports++;
       });
 
+      // Process competitor reports
+      competitorReports.forEach(report => {
+        const clientId = report.clientId;
+        if (!visitsMap.has(clientId)) {
+          visitsMap.set(clientId, {
+            clientId: clientId,
+            clientName: report.client?.name || 'Unknown Client',
+            userId: report.userId,
+            userName: report.user?.name || 'Unknown User',
+            date: date,
+            feedbackReports: [],
+            productReports: [],
+            visibilityReports: [],
+            competitorReports: [],
+            totalReports: 0,
+            isComplete: false,
+          });
+        }
+        visitsMap.get(clientId).competitorReports.push(report);
+        visitsMap.get(clientId).totalReports++;
+      });
+
       // Calculate completion status and convert to array
       const visits = Array.from(visitsMap.values()).map(visit => ({
         ...visit,
-        isComplete: visit.totalReports >= 3, // Consider complete if all 3 report types exist
+        isComplete: visit.totalReports >= 3, // Consider complete if all 3 core report types exist (competitor is optional)
         completionPercentage: (visit.totalReports / 3) * 100,
       }));
 
@@ -658,7 +800,7 @@ export class ReportsService {
       // Get reports for this specific week
       console.log(`🔍 Fetching reports for user ${userId} between ${weekStart.toISOString()} and ${weekEnd.toISOString()}...`);
       
-      const [feedbackReports, productReports, visibilityReports] = await Promise.all([
+      const [feedbackReports, productReports, visibilityReports, competitorReports] = await Promise.all([
         this.feedbackReportRepository.find({ 
           where: { 
             userId,
@@ -680,12 +822,20 @@ export class ReportsService {
           },
           relations: ['client', 'user'],
         }),
+        this.competitorReportRepository.find({ 
+          where: { 
+            userId,
+            createdAt: Between(weekStart, weekEnd)
+          },
+          relations: ['client', 'user'],
+        }),
       ]);
       
       console.log(`🔍 ALL reports found for user ${userId}:`);
       console.log(`  - Feedback reports: ${feedbackReports.length}`);
       console.log(`  - Product reports: ${productReports.length}`);
       console.log(`  - Visibility reports: ${visibilityReports.length}`);
+      console.log(`  - Competitor reports: ${competitorReports.length}`);
       
       // Log sample data if found
       if (feedbackReports.length > 0) {
@@ -697,9 +847,12 @@ export class ReportsService {
       if (visibilityReports.length > 0) {
         console.log(`  - Sample visibility: ID ${visibilityReports[0].id}, Client ${visibilityReports[0].clientId}, Date ${visibilityReports[0].createdAt}`);
       }
+      if (competitorReports.length > 0) {
+        console.log(`  - Sample competitor: ID ${competitorReports[0].id}, Client ${competitorReports[0].clientId}, Date ${competitorReports[0].createdAt}`);
+      }
 
       // Check if we found any reports
-      const totalReports = feedbackReports.length + productReports.length + visibilityReports.length;
+      const totalReports = feedbackReports.length + productReports.length + visibilityReports.length + competitorReports.length;
       console.log(`📊 Total reports found: ${totalReports}`);
       
       if (totalReports === 0) {
@@ -724,7 +877,8 @@ export class ReportsService {
       const allReports = [
         ...feedbackReports.map(r => ({ ...r, type: 'feedback' as const })),
         ...productReports.map(r => ({ ...r, type: 'product' as const })),
-        ...visibilityReports.map(r => ({ ...r, type: 'visibility' as const }))
+        ...visibilityReports.map(r => ({ ...r, type: 'visibility' as const })),
+        ...competitorReports.map(r => ({ ...r, type: 'competitor' as const }))
       ];
       
       console.log(`🔍 Processing ${allReports.length} total reports...`);
@@ -791,12 +945,27 @@ export class ReportsService {
               createdAt: report.createdAt,
               type: 'visibility'
             });
+          } else if (report.type === 'competitor') {
+            if (!existingVisit.competitorReports) existingVisit.competitorReports = [];
+            existingVisit.competitorReports.push({
+              id: report.id,
+              competitorName: report.competitorName,
+              productName: report.productName,
+              price: report.price,
+              quantity: report.quantity,
+              promotion: report.promotion,
+              comment: report.comment,
+              imageUrl: report.imageUrl,
+              createdAt: report.createdAt,
+              type: 'competitor'
+            });
           }
           
           // Update completion status
           existingVisit.totalReports = (existingVisit.feedbackReports?.length || 0) + 
                                      (existingVisit.productReports?.length || 0) + 
-                                     (existingVisit.visibilityReports?.length || 0);
+                                     (existingVisit.visibilityReports?.length || 0) +
+                                     (existingVisit.competitorReports?.length || 0);
           existingVisit.isComplete = existingVisit.totalReports >= 3;
           
         } else {
@@ -815,7 +984,8 @@ export class ReportsService {
             isComplete: false,
             feedbackReports: [],
             productReports: [],
-            visibilityReports: []
+            visibilityReports: [],
+            competitorReports: []
           };
           
           // Add the first report
@@ -843,6 +1013,19 @@ export class ReportsService {
               imageUrl: report.imageUrl,
               createdAt: report.createdAt,
               type: 'visibility'
+            }];
+          } else if (report.type === 'competitor') {
+            newVisit.competitorReports = [{
+              id: report.id,
+              competitorName: report.competitorName,
+              productName: report.productName,
+              price: report.price,
+              quantity: report.quantity,
+              promotion: report.promotion,
+              comment: report.comment,
+              imageUrl: report.imageUrl,
+              createdAt: report.createdAt,
+              type: 'competitor'
             }];
           }
           

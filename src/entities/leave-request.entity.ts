@@ -26,8 +26,8 @@ export class LeaveRequest {
   @Column({ type: 'varchar', length: 255, nullable: true })
   attachment_url: string;
 
-  @Column({ type: 'enum', enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending' })
-  status: string;
+  @Column({ type: 'tinyint', default: 0 })
+  status: number; // 0=pending, 1=approved, 2=rejected/cancelled
 
   @Column({ type: 'int', nullable: true })
   approved_by: number;

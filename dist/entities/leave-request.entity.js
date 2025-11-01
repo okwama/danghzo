@@ -47,8 +47,8 @@ __decorate([
     __metadata("design:type", String)
 ], LeaveRequest.prototype, "attachment_url", void 0);
 __decorate([
-    (0, typeorm_1.Column)({ type: 'enum', enum: ['pending', 'approved', 'rejected', 'cancelled'], default: 'pending' }),
-    __metadata("design:type", String)
+    (0, typeorm_1.Column)({ type: 'tinyint', default: 0 }),
+    __metadata("design:type", Number)
 ], LeaveRequest.prototype, "status", void 0);
 __decorate([
     (0, typeorm_1.Column)({ type: 'int', nullable: true }),
